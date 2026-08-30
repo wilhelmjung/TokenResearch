@@ -24,7 +24,8 @@ TokenResearch/
 │   ├── 6-WAIC2026-Token经济学原文.md         # WAIC 2026 天数智芯 × 易方达 产业深度对谈
 │   ├── 7-腾讯研究院-Token经济学七问.md       # 腾讯研究院发布的新经济宏观全景地图
 │   ├── 8-智谱AI-GLM-5.3-Flash原生多模态架构.md # 智谱 GLM-5.3-Flash 原生全模态与混合注意力专题
-│   └── 9-月之暗面-Kimi-K3-2.8T超大规模MoE与KDA架构.md # 月之暗面 2.8T MoE 与 KDA/Mooncake 架构专题
+│   ├── 9-月之暗面-Kimi-K3-2.8T超大规模MoE与KDA架构.md # 月之暗面 2.8T MoE 与 KDA/Mooncake 架构专题
+│   └── 10-IQ2-IQ4非线性格点与重要性矩阵混合量化技术.md # IQ2/IQ4 非线性格点与 I-Matrix 混合量化专题
 │
 ├── hardware/                    # 🚀 算力硬件、自研 ASIC 与 UMA 算子优化专题
 │   ├── README.md                             # 算力硬件目录索引与芯片选型速查

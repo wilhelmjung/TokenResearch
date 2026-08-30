@@ -87,7 +87,8 @@
 ## 5. 关联详细专题报告导航
 
 * 📘 **全栈技术大白皮书**：[Topic-1-TokenEconomy/1-Infra-TokenCostReduction-Report.md](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/1-Infra-TokenCostReduction-Report.md)
-* 🌟 **前沿模型架构专题**：
+* 🌟 **前沿模型架构与量化专题**：
+  * [IQ2/IQ4 混合量化与 I-Matrix 专题](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/10-IQ2-IQ4%E9%9D%9E%E7%BA%BF%E6%80%A7%E6%A0%BC%E7%82%B9%E4%B8%8E%E9%87%8D%E8%A6%81%E6%80%A7%E7%9F%A9%E9%98%B5%E6%B7%B7%E5%90%88%E9%87%8F%E5%8C%96%E6%8A%80%E6%9C%AF.md) · 非线性格点、8D 向量码本与 671B 单机常驻
   * [Kimi-K3 2.8T 旗舰架构专题](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/9-%E6%9C%88%E4%B9%8B%E6%9A%97%E9%9D%A2-Kimi-K3-2.8T%E8%B6%85%E5%A4%A7%E8%A7%84%E6%A8%A1MoE%E4%B8%8EKDA%E6%9E%B6%E6%9E%84.md) · 3T 级 MoE、KDA 混合注意力与 Mooncake
   * [Qwen3.8-Flash-Next 架构专题](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/2-Qwen3.8-Flash-Next-Architecture-Analysis.md) · 混合注意力与 6B 极致稀疏
   * [GLM-5.3-Flash 全模态架构专题](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/8-%E6%99%BA%E8%B0%B1AI-GLM-5.3-Flash%E5%8E%9F%E7%94%9F%E5%A4%9A%E6%A8%A1%E6%80%81%E6%9E%B6%E6%9E%84.md) · 原生多模态与 ox-alpha 实测

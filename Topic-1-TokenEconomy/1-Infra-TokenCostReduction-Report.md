@@ -690,7 +690,38 @@ $$c_t^{KV} = W^{DKV} h_t \quad (d_c = 512)$$
 
 **vs 前沿推理模型 API（\$2-15/M）：成本降低 50x-100x。**
 
-### 4.7 非 CUDA 软件生态
+---
+
+### 4.7 🧩 极限低位宽突破：IQ2 / IQ4 非线性格点与重要性矩阵（I-Matrix）混合量化
+
+针对千亿以上超大规模模型（如 DeepSeek-R1 671B、Llama 405B、Kimi-K3 2.8T）及端侧设备显存受限痛点，**基于 I-Matrix 加权的非线性高斯格点（IQ4）与 8 维空间向量码本量化（IQ2）**，已成为大模型桌面化与边缘端侧降本的核心通用底座：
+
+```
+大模型体量与 IQ 量化混合编排矩阵:
+├── 1. 超大规模 MoE (DeepSeek 671B / Kimi 2.8T):
+│   ├── Attention 投影 / 门控 / 共享专家 ──> IQ4_XS (4.25 bpw) 保证核心语义无损
+│   └── 256~896 个稀疏路由专家 ─────────> IQ2_XXS / IQ2_XS (2.06~2.31 bpw)
+│       └── 落地收益: 671B 权重由 1,340GB 骤降至 ~195GB，单台 512GB Mac Studio / 双卡 GB10 即可满血常驻
+│
+├── 2. 超大稠密模型 (Llama-3.1 405B / Qwen 72B):
+│   └── 全局混合 IQ3_M / IQ4_XS ──> 405B 由 810GB 压至 ~200GB，单机替代双机 8 卡 H100
+│
+└── 3. 移动端/端侧智能体 (Llama 8B / Qwen 7B/14B):
+    └── 全局 IQ2_M (2.7 bpw) ──> 8B 压至 2.7GB，iPhone/Android 手机 7x24 后台常驻
+```
+
+* **三大核心技术机制**：
+  1. **I-Matrix（重要性矩阵）**：利用真实语料前向统计激活值二阶敏感度 $\min \sum I_{ij} (W_{ij} - \hat{W}_{ij})^2$，优先保护 5% 关键神经元，让 95% 冗余参数承担极限压缩；
+  2. **IQ4 非线性高斯查找表（4.25 ~ 4.5 bpw）**：按正态分布密集采样 16 个最优浮点格点，接近 100% 保持 FP16 浮点精度；
+  3. **IQ2 8 维空间向量格点码本（2.06 ~ 2.31 bpw）**：8 个权重共享 1 字节 256 状态码本索引，突破 2-bit 均匀量化崩溃难题；
+* **TCO 经济学价值**：使 671B 满血模型硬件部署门槛由 **百万级多卡集群（~360万元）** 降至 **单台 Mac Studio / 边缘工控机（~4.5万元）**，每百万 Token 综合成本暴降 **98.7%**！
+
+> 📄 **专题深度技术报告**：
+> [Topic-1-TokenEconomy/10-IQ2-IQ4非线性格点与重要性矩阵混合量化技术.md](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/10-IQ2-IQ4%E9%9D%9E%E7%BA%BF%E6%80%A7%E6%A0%BC%E7%82%B9%E4%B8%8E%E9%87%8D%E8%A6%81%E6%80%A7%E7%9F%A9%E9%98%B5%E6%B7%B7%E5%90%88%E9%87%8F%E5%8C%96%E6%8A%80%E6%9C%AF.md)
+
+---
+
+### 4.8 非 CUDA 软件生态
 
 | 生态 | 硬件 | 推理性能 vs CUDA | 现状 |
 | :--- | :--- | :---: | :--- |
@@ -700,7 +731,7 @@ $$c_t^{KV} = W^{DKV} h_t \quad (d_c = 512)$$
 
 ---
 
-### 4.8 🚀 专属裸机推理引擎（DS4.c / H3.c / llm.c 范式）的极致垂直优化
+### 4.9 🚀 专属裸机推理引擎（DS4.c / H3.c / llm.c 范式）的极致垂直优化
 
 除通用框架（vLLM / SGLang）外，针对特定模型（如 DeepSeek-V4）与特定芯片（如 H20 / GB10）深度绑定的**纯 C/CUDA 裸机专用引擎（如 DS4.c、H3.c 范式）**，正成为超大规模场景下的终极降本杀手锏：
 
@@ -819,6 +850,7 @@ graph LR
 >   - [Topic-1-TokenEconomy/7-腾讯研究院-Token经济学七问.md](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/7-%E8%85%BE%E8%AE%AF%E7%A0%94%E7%A9%B6%E9%99%A2-Token%E7%BB%8F%E6%B5%8E%E5%AD%A6%E4%B8%83%E9%97%AE.md) · 腾讯研究院宏观地图
 >   - [Topic-1-TokenEconomy/8-智谱AI-GLM-5.3-Flash原生多模态架构.md](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/8-%E6%99%BA%E8%B0%B1AI-GLM-5.3-Flash%E5%8E%9F%E7%94%9F%E5%A4%9A%E6%A8%A1%E6%80%81%E6%9E%B6%E6%9E%84.md) · GLM-5.3-Flash 全模态架构分析
 >   - [Topic-1-TokenEconomy/9-月之暗面-Kimi-K3-2.8T超大规模MoE与KDA架构.md](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/9-%E6%9C%88%E4%B9%8B%E6%9A%97%E9%9D%A2-Kimi-K3-2.8T%E8%B6%85%E5%A4%A7%E8%A7%84%E6%A8%A1MoE%E4%B8%8EKDA%E6%9E%B6%E6%9E%84.md) · Kimi-K3 2.8T MoE 架构深度分析
+>   - [Topic-1-TokenEconomy/10-IQ2-IQ4非线性格点与重要性矩阵混合量化技术.md](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/10-IQ2-IQ4%E9%9D%9E%E7%BA%BF%E6%80%A7%E6%A0%BC%E7%82%B9%E4%B8%8E%E9%87%8D%E8%A6%81%E6%80%A7%E7%9F%A9%E9%98%B5%E6%B7%B7%E5%90%88%E9%87%8F%E5%8C%96%E6%8A%80%E6%9C%AF.md) · IQ2/IQ4 混合量化与 I-Matrix 技术深度报告
 > - 🌐 **行业规范与官方文献**：
 >   - NVIDIA GTC 2024/2025 技术公告 · Blackwell / DGX Spark (GB10) 规格
 >   - [Apple Mac Studio 官网技术规范](https://www.apple.com/mac-studio/) · M5/M6 Ultra 统一内存架构
