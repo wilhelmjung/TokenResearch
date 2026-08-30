@@ -37,7 +37,8 @@ TokenResearch/
 ├── paper/                       # 📚 顶会论文与异构推理学术前沿（SOSP/OSDI/EuroSys）
 │   └── README.md                             # 顶会论文列表索引与 EuroSys '27 libumsh 重点拆解
 │
-└── TODO.md                      # 📌 学术前沿与研究待办清单（ACL 2026 / ICML 2026 AI Infra 论文）
+├── TODO.md                      # 📌 学术前沿与研究待办清单（ACL 2026 / ICML 2026 AI Infra 论文）
+└── gotchas.md                   # ⚠️ 项目格式与渲染避坑指南（LaTeX转义/Pages部署/混排规范）
 ```
 
 ---
