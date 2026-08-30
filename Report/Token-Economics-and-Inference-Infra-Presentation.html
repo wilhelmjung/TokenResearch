@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2026 Token 经济学与大模型推理 100 倍降本全栈报告</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    :root {
+      --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+      --accent-glow: rgba(99, 102, 241, 0.15);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+    .gradient-text {
+      background: var(--primary-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+    .dark .glass-panel {
+      background: rgba(15, 23, 42, 0.75);
+      border: 1px solid rgba(51, 65, 85, 0.6);
+    }
+    .tag-badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+    }
+    /* Smooth tab transition */
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen transition-colors duration-300">
+
+  <!-- Header Navigation -->
+  <header class="sticky top-0 z-50 glass-panel border-b border-slate-200 dark:border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-pink-500 flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-500/30">
+          ⚡
+        </div>
+        <div>
+          <span class="font-extrabold text-lg tracking-tight gradient-text">TokenResearch 2026</span>
+          <span class="hidden md:inline-block text-xs ml-2 text-slate-500 dark:text-slate-400 font-medium">| 全栈技术大白皮书汇报</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <button onclick="toggleDarkMode()" class="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:opacity-80 transition text-sm">
+          🌓 切换主题
+        </button>
+        <a href="#calculator" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm shadow-md transition">
+          🧮 TCO 测算器
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="relative overflow-hidden py-16 sm:py-24 border-b border-slate-200 dark:border-slate-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+      <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-indigo-100 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 text-xs font-semibold mb-6">
+        <span>🚀 2026 年度技术决策与产业报告</span>
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+      </div>
+      <h1 class="text-4xl sm:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
+        Token 经济大潮下的<br/>
+        <span class="gradient-text">大模型推理 100 倍降本全栈架构与选型</span>
+      </h1>
+      <p class="max-w-3xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-slate-400 font-normal leading-relaxed mb-10">
+        从宏观 Token 经济规律到微观芯片近存算子，打通「五层技术蛋糕 × 三大算力阵营 × 两维解耦调度 × SOTA 开源模型」，让每百万 Token 生产成本从 $1.00 跌至 $0.01。
+      </p>
+
+      <!-- Key Metrics Showcase Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto text-left">
+        <div class="glass-panel p-5 rounded-2xl shadow-sm hover:shadow-md transition">
+          <div class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">消耗量爆发</div>
+          <div class="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400">140 万亿 <span class="text-sm font-semibold text-slate-500">/天</span></div>
+          <div class="text-xs text-slate-600 dark:text-slate-400 mt-1">2年内暴增 1,400 倍</div>
+        </div>
+        <div class="glass-panel p-5 rounded-2xl shadow-sm hover:shadow-md transition">
+          <div class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">极速投机采样</div>
+          <div class="text-2xl sm:text-3xl font-black text-purple-600 dark:text-purple-400">5 – 6x <span class="text-sm font-semibold text-slate-500">加速</span></div>
+          <div class="text-xs text-slate-600 dark:text-slate-400 mt-1">DFlash 块扩散并行生成</div>
+        </div>
+        <div class="glass-panel p-5 rounded-2xl shadow-sm hover:shadow-md transition">
+          <div class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">ASIC 能效突破</div>
+          <div class="text-2xl sm:text-3xl font-black text-pink-600 dark:text-pink-400">104.3x <span class="text-sm font-semibold text-slate-500">TPS/kW</span></div>
+          <div class="text-xs text-slate-600 dark:text-slate-400 mt-1">OpenAI Jalapeño R1 实测</div>
+        </div>
+        <div class="glass-panel p-5 rounded-2xl shadow-sm hover:shadow-md transition">
+          <div class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">端侧千亿常驻</div>
+          <div class="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">512 GB <span class="text-sm font-semibold text-slate-500">UMA</span></div>
+          <div class="text-xs text-slate-600 dark:text-slate-400 mt-1">Mac Studio 桌面单机 670B</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Navigation Tabs -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10">
+    <div class="flex overflow-x-auto space-x-2 p-1.5 bg-slate-200/70 dark:bg-slate-900 rounded-2xl border border-slate-300 dark:border-slate-800">
+      <button onclick="switchTab('tab-macro')" id="btn-tab-macro" class="tab-btn px-5 py-2.5 rounded-xl font-bold text-sm transition bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm whitespace-nowrap">
+        🌐 1. 宏观 Token 经济学
+      </button>
+      <button onclick="switchTab('tab-cake')" id="btn-tab-cake" class="tab-btn px-5 py-2.5 rounded-xl font-bold text-sm transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 whitespace-nowrap">
+        🍰 2. 五层技术蛋糕
+      </button>
+      <button onclick="switchTab('tab-hardware')" id="btn-tab-hardware" class="tab-btn px-5 py-2.5 rounded-xl font-bold text-sm transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 whitespace-nowrap">
+        🚀 3. 三大算力阵营
+      </button>
+      <button onclick="switchTab('tab-architecture')" id="btn-tab-architecture" class="tab-btn px-5 py-2.5 rounded-xl font-bold text-sm transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 whitespace-nowrap">
+        ⚡ 4. 两维解耦与调度
+      </button>
+      <button onclick="switchTab('tab-models')" id="btn-tab-models" class="tab-btn px-5 py-2.5 rounded-xl font-bold text-sm transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 whitespace-nowrap">
+        🌟 5. SOTA 模型矩阵
+      </button>
+      <button onclick="switchTab('tab-roadmap')" id="btn-tab-roadmap" class="tab-btn px-5 py-2.5 rounded-xl font-bold text-sm transition text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 whitespace-nowrap">
+        🗺️ 6. 100x 降本路线与测算
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+
+    <!-- TAB 1: 宏观 Token 经济学 -->
+    <div id="tab-macro" class="tab-content active space-y-8">
+      <div class="glass-panel p-8 rounded-3xl">
+        <h2 class="text-2xl sm:text-3xl font-extrabold mb-4">从「电能 $\rightarrow$ 算力 $\rightarrow$ Token $\rightarrow$ 商业价值」的价值流动</h2>
+        <p class="text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+          Token 已不仅仅是文本编码单元，而是 AI 时代的<strong>“数字能源与认知度量衡”</strong>。根据杰文斯悖论（Jevons Paradox），单 Token 生产成本的指数级下跌并没有减少总算力支出，反而激发了 Agent 的 7×24 小时机器级自主消耗。
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 my-8">
+          <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-6 bg-slate-50/50 dark:bg-slate-900/50">
+            <div class="text-blue-500 font-bold text-lg mb-2">① Jevons 悖论大爆发</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              Token 单价下降 100 倍 $\rightarrow$ 应用调用门槛消失 $\rightarrow$ 驱动多步推理与自主 Agent 涌现 $\rightarrow$ 激发千倍消耗增长。
+            </p>
+          </div>
+          <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-6 bg-slate-50/50 dark:bg-slate-900/50">
+            <div class="text-purple-500 font-bold text-lg mb-2">② 价值结构深度极化</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              <strong>不到 5% 的高价值可编程 Token</strong>（代码、法律决策、复杂科研）捕获了全行业超过 80% 的商业变现价值。
+            </p>
+          </div>
+          <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-6 bg-slate-50/50 dark:bg-slate-900/50">
+            <div class="text-emerald-500 font-bold text-lg mb-2">③ 物理度量衡转化</div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+              从“每度电（kWh）能产出多少有用 Token”衡量真实算力效率（Tokens/s/W/$ 成为选型核心终极指标）。
+            </p>
+          </div>
+        </div>
+
+        <!-- Flow Visual Diagram -->
+        <div class="bg-indigo-900/10 border border-indigo-500/20 rounded-2xl p-6 text-center">
+          <div class="text-sm font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-4">Token 价值链宏观流向模型</div>
+          <div class="flex flex-wrap items-center justify-center gap-4 text-sm font-semibold">
+            <div class="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800">⚡ 电力与数据中心 (CAPEX/OPEX)</div>
+            <span>➔</span>
+            <div class="px-4 py-2 rounded-xl bg-blue-600 text-white">🖥️ 硬件芯片矩阵 (GPU / ASIC / UMA)</div>
+            <span>➔</span>
+            <div class="px-4 py-2 rounded-xl bg-purple-600 text-white">⚙️ 调度系统与推理引擎 (PD / AM / 裸机)</div>
+            <span>➔</span>
+            <div class="px-4 py-2 rounded-xl bg-pink-600 text-white">🧠 SOTA 开源模型 (Flash / 3T)</div>
+            <span>➔</span>
+            <div class="px-4 py-2 rounded-xl bg-emerald-600 text-white">💎 高价值 Agent 与业务闭环</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: 五层技术蛋糕 -->
+    <div id="tab-cake" class="tab-content space-y-8">
+      <div class="glass-panel p-8 rounded-3xl">
+        <h2 class="text-2xl sm:text-3xl font-extrabold mb-4">AI 基础设施降本「五层蛋糕」全景</h2>
+        <p class="text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+          Token 生产成本是由整套软硬件技术栈共同决定的，任何单点突破若脱离全栈协同都无法实现 100 倍降本：
+        </p>
+
+        <div class="space-y-4">
+          <!-- Layer 5 -->
+          <div class="border-l-4 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 p-5 rounded-r-2xl border border-slate-200 dark:border-slate-800">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-extrabold text-emerald-600 dark:text-emerald-400">第 5 层：算法与模型架构层 (Algorithm & Architecture)</span>
+              <span class="tag-badge bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">5x – 10x 降本</span>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">
+              MoE 稀疏激活 (DeepSeek 284B/13B, Qwen 125B/6B)、MLA 多头潜在注意力压缩、DFlash 块扩散并行投机采样、51B N-gram 查表免 GEMM 算力。
+            </p>
+          </div>
+
+          <!-- Layer 4 -->
+          <div class="border-l-4 border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 p-5 rounded-r-2xl border border-slate-200 dark:border-slate-800">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-extrabold text-blue-600 dark:text-blue-400">第 4 层：引擎与编译优化层 (Engine & Compiler)</span>
+              <span class="tag-badge bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">2x – 4x 降本</span>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">
+              vLLM V1 / SGLang 运行环境、Continuous Batching 标配、专用纯 C/CUDA 裸机引擎（mu25 范式 / DS4.c 消除 Python 运行时税）、Triton 跨硬件内核。
+            </p>
+          </div>
+
+          <!-- Layer 3 -->
+          <div class="border-l-4 border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/20 p-5 rounded-r-2xl border border-slate-200 dark:border-slate-800">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-extrabold text-indigo-600 dark:text-indigo-400">第 3 层：分布式调度与网络层 (Distributed Scheduling & Network)</span>
+              <span class="tag-badge bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">2x – 3x Goodput 提升</span>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">
+              时间维 PD 分离 (Prefill-Decode Disaggregation)、空间维 AM 分离 (Attention-MoE / JANUS 架构消灭资源搁浅)、Mooncake 分布式 KV-Cache 内存池化。
+            </p>
+          </div>
+
+          <!-- Layer 2 -->
+          <div class="border-l-4 border-purple-500 bg-purple-50/50 dark:bg-purple-950/20 p-5 rounded-r-2xl border border-slate-200 dark:border-slate-800">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-extrabold text-purple-600 dark:text-purple-400">第 2 层：算子与微架构优化层 (Operator & Microarchitecture)</span>
+              <span class="tag-badge bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">1.5x – 2x 吞吐</span>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">
+              FlashAttention-3 / FlashMLA、UMA 统一内存零拷贝算子融合、Metal SDPA 寄存器驻留、Meta KernelEvolve / Kernel Forge Agent 自动化调优。
+            </p>
+          </div>
+
+          <!-- Layer 1 -->
+          <div class="border-l-4 border-pink-500 bg-pink-50/50 dark:bg-pink-950/20 p-5 rounded-r-2xl border border-slate-200 dark:border-slate-800">
+            <div class="flex justify-between items-center mb-1">
+              <span class="font-extrabold text-pink-600 dark:text-pink-400">第 1 层：芯片硬件与物理设施层 (Silicon & Hardware Infra)</span>
+              <span class="tag-badge bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200">3x – 5x 硬件能效</span>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400">
+              数据中心 (NVIDIA H20 4.0TB/s / Blackwell B200 FP4)、自研 ASIC (OpenAI Jalapeño 15.4TB/s HBM4)、端侧 UMA (Apple Mac Studio 512GB / DGX Spark GB10)。
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: 三大算力阵营 -->
+    <div id="tab-hardware" class="tab-content space-y-8">
+      <div class="glass-panel p-8 rounded-3xl">
+        <h2 class="text-2xl sm:text-3xl font-extrabold mb-4">2026 全球算力芯片矩阵：三大阵营格局</h2>
+        <p class="text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+          大模型推理的核心硬件瓶颈已由算力（FLOPS）转向<strong>内存带宽（Memory Bandwidth）与通信互联（Interconnect）</strong>：
+        </p>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm border-collapse">
+            <thead>
+              <tr class="border-b border-slate-300 dark:border-slate-700 bg-slate-100/70 dark:bg-slate-900/70">
+                <th class="p-3 font-bold">阵营 / 芯片型号</th>
+                <th class="p-3 font-bold">显存 / 统一内存</th>
+                <th class="p-3 font-bold">内存带宽</th>
+                <th class="p-3 font-bold">功耗 TDP</th>
+                <th class="p-3 font-bold">核心突破与降本定位</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+              <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition">
+                <td class="p-3 font-bold text-blue-600 dark:text-blue-400">NVIDIA H20 (SXM)</td>
+                <td class="p-3">96 GB HBM3</td>
+                <td class="p-3 font-semibold text-emerald-600">4.0 TB/s</td>
+                <td class="p-3">400 W</td>
+                <td class="p-3">“带宽之王”，15% 算力保 120% 带宽，国内公有云极致高能效</td>
+              </tr>
+              <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition">
+                <td class="p-3 font-bold text-blue-600 dark:text-blue-400">NVIDIA B200 / GB200</td>
+                <td class="p-3">192 GB / 384 GB</td>
+                <td class="p-3 font-semibold text-emerald-600">8.0 TB/s</td>
+                <td class="p-3">1000 W</td>
+                <td class="p-3">FP4 张量引擎 + NVLink 5 (1.8TB/s)，相比 Hopper 成本压缩 3-5x</td>
+              </tr>
+              <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition bg-pink-50/30 dark:bg-pink-950/20">
+                <td class="p-3 font-bold text-pink-600 dark:text-pink-400">🔥 OpenAI Jalapeño</td>
+                <td class="p-3">216 GB (6x HBM4)</td>
+                <td class="p-3 font-semibold text-pink-600 font-bold">15.4 TB/s</td>
+                <td class="p-3">700 W (≤550W)</td>
+                <td class="p-3"><strong>自研 ASIC 终局</strong>：104.3x TPS/kW 能效，无需 PD 分离，机架内 128 XPU 互联</td>
+              </tr>
+              <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition bg-purple-50/30 dark:bg-purple-950/20">
+                <td class="p-3 font-bold text-purple-600 dark:text-purple-400">🍎 Mac Studio (M5/M6 Ultra)</td>
+                <td class="p-3"><strong>512 GB UMA</strong></td>
+                <td class="p-3 font-semibold text-purple-600">1.2 – 1.6 TB/s</td>
+                <td class="p-3 font-bold text-emerald-600">150W – 250W</td>
+                <td class="p-3"><strong>桌面千亿模型常驻</strong>：单机常驻 R1 670B (4-bit) / 405B，彻底免除集群网络税与 API 账单</td>
+              </tr>
+              <tr class="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition">
+                <td class="p-3 font-bold text-emerald-600 dark:text-emerald-400">NVIDIA DGX Spark (GB10)</td>
+                <td class="p-3">128 GB LPDDR5X UMA</td>
+                <td class="p-3">273 GB/s</td>
+                <td class="p-3">140 W</td>
+                <td class="p-3">1 PFLOPS FP4 算力，企业级私有 Agent 零边际成本部署</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: 两维解耦与调度 -->
+    <div id="tab-architecture" class="tab-content space-y-8">
+      <div class="glass-panel p-8 rounded-3xl">
+        <h2 class="text-2xl sm:text-3xl font-extrabold mb-4">架构解耦与极速调度：突破传统服务瓶颈</h2>
+        <p class="text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+          从单机混部到「时间维（PD 分离）× 空间维（AM 分离）× 扩散并行（DFlash）」的系统级突破：
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- PD Separation -->
+          <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-6 bg-slate-50/50 dark:bg-slate-900/50">
+            <h3 class="text-xl font-bold text-blue-600 dark:text-blue-400 mb-3">🕒 时间维：PD 分离 (Prefill-Decode Disaggregation)</h3>
+            <ul class="text-sm space-y-2 text-slate-600 dark:text-slate-400">
+              <li>• <strong>痛点</strong>：Prefill 算力密集（GEMM）与 Decode 带宽密集（GEMV）混跑导致行头阻塞与抖动。</li>
+              <li>• <strong>解法</strong>：Prefill 独立硬件池（高算力）+ Decode 独立池（高带宽），通过 RDMA 传输 KV Cache。</li>
+              <li>• <strong>成效</strong>：<strong>P99 尾部延迟下降 70%，有效吞吐（Goodput）提升 2–3 倍</strong>。</li>
+            </ul>
+          </div>
+
+          <!-- AM Separation -->
+          <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-6 bg-slate-50/50 dark:bg-slate-900/50">
+            <h3 class="text-xl font-bold text-purple-600 dark:text-purple-400 mb-3">📐 空间维：AM 分离 (Attention-MoE / JANUS 架构)</h3>
+            <ul class="text-sm space-y-2 text-slate-600 dark:text-slate-400">
+              <li>• <strong>痛点</strong>：长文本长上下文挤占 KV Cache 显存，MoE 稀疏专家计算搁浅。</li>
+              <li>• <strong>解法</strong>：拆分 Attention 算子节点（显存大）与 Expert FFN 节点（计算强），微流水线调度。</li>
+              <li>• <strong>成效</strong>：<strong>集群硬件综合饱和度从 45% 大幅跃升至 85%+</strong>。</li>
+            </ul>
+          </div>
+
+          <!-- DFlash Speculation -->
+          <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-6 bg-slate-50/50 dark:bg-slate-900/50">
+            <h3 class="text-xl font-bold text-pink-600 dark:text-pink-400 mb-3">⚡ 算法级：DFlash 块扩散并行投机采样</h3>
+            <ul class="text-sm space-y-2 text-slate-600 dark:text-slate-400">
+              <li>• <strong>突破</strong>：打破逐词自回归瓶颈，单步并行扩散生成整块（Block）Token。</li>
+              <li>• <strong>成效</strong>：<strong>5 – 6x 无损加速，接受率超 89%</strong>，草稿成本恒定不随 Token 增长。</li>
+            </ul>
+          </div>
+
+          <!-- Baremetal mu25 -->
+          <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-6 bg-slate-50/50 dark:bg-slate-900/50">
+            <h3 class="text-xl font-bold text-emerald-600 dark:text-emerald-400 mb-3">🔬 微架构：专用纯 C/CUDA 裸机引擎 (mu25 范式)</h3>
+            <ul class="text-sm space-y-2 text-slate-600 dark:text-slate-400">
+              <li>• <strong>突破</strong>：彻底消除 Python 框架税、GIL 锁与动态内存分配，实现编译期超级大融合。</li>
+              <li>• <strong>实测</strong>：L20 / GB10 上 <strong>TTFT 缩短 20.9%，TPOT 缩短 27.3%，零显存泄漏</strong>。</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: SOTA 模型矩阵 -->
+    <div id="tab-models" class="tab-content space-y-8">
+      <div class="glass-panel p-8 rounded-3xl">
+        <h2 class="text-2xl sm:text-3xl font-extrabold mb-4">2026 开源 SOTA 模型格局：极速 Flash 矩阵 vs 3T 级重型底座</h2>
+        <p class="text-slate-600 dark:text-slate-400 leading-relaxed mb-6">
+          开源大模型已分化出高频轻量推理与重型前沿攻坚的二元协同分工体系：
+        </p>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- DeepSeek V4 Flash -->
+          <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-6 bg-blue-50/30 dark:bg-blue-950/20">
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-black text-lg text-blue-600 dark:text-blue-400">🇨🇳 DeepSeek-V4-Flash</span>
+              <span class="tag-badge bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">284B / 13B 激活</span>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">
+              MLA 多头潜在注意力 + DFlash 块扩散投机采样，1M 超长窗口，输入 Cache Hit 低至 <strong>$0.007/M</strong>。
+            </p>
+            <div class="text-xs font-semibold text-slate-500">主打：复杂代码生成、高并发批处理 API 批发</div>
+          </div>
+
+          <!-- Qwen3.8 Flash Next -->
+          <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-6 bg-purple-50/30 dark:bg-purple-950/20">
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-black text-lg text-purple-600 dark:text-purple-400">🇨🇳 Qwen3.8-Flash-Next</span>
+              <span class="tag-badge bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">125B+51B查表 / 6B 激活</span>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">
+              Gated DeltaNet 线性循环（75% 层 0 KV 增长）+ 51B N-gram 内存查表（零 GEMM 算力），激活仅 <strong>6B 参数</strong>。
+            </p>
+            <div class="text-xs font-semibold text-slate-500">主打：极长文档解析、超低 KV 显存、端侧极速常驻</div>
+          </div>
+
+          <!-- GLM 5.3 Flash -->
+          <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-6 bg-pink-50/30 dark:bg-pink-950/20">
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-black text-lg text-pink-600 dark:text-pink-400">🇨🇳 GLM-5.3-Flash (ox-alpha)</span>
+              <span class="tag-badge bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200">320B / 18B 激活</span>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">
+              原生 Text/Image/Video 全模态端到端融合 + 混合稀疏/线性注意力，逼近 Claude Opus 4.8 但成本降 90%+。
+            </p>
+            <div class="text-xs font-semibold text-slate-500">主打：视觉交互 Coding、UI 闭环 Agent、长视频分析</div>
+          </div>
+
+          <!-- Moonshot Kimi K3 -->
+          <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-6 bg-emerald-50/30 dark:bg-emerald-950/20">
+            <div class="flex justify-between items-center mb-2">
+              <span class="font-black text-lg text-emerald-600 dark:text-emerald-400">🌙 Moonshot Kimi-K3</span>
+              <span class="tag-badge bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">2.8T 巨型底座 / 104B 激活</span>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-3">
+              全球首个 3T 级开源 MoE（896 专家）+ KDA 混合注意力 + AttnRes 跨层检索 + Mooncake 分布式解耦架构。
+            </p>
+            <div class="text-xs font-semibold text-slate-500">主打：仓储级复杂代码重构、全自主深度科研 Agent</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: 100x 降本路线与测算器 -->
+    <div id="tab-roadmap" class="tab-content space-y-8">
+      <div class="glass-panel p-8 rounded-3xl">
+        <h2 class="text-2xl sm:text-3xl font-extrabold mb-4">企业 100 倍降本四阶路线图</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 my-6">
+          <div class="p-5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <div class="text-xs font-bold text-blue-500 mb-1">阶梯 1 · 算法稀疏革命</div>
+            <div class="text-xl font-extrabold mb-2">5x – 10x 降本</div>
+            <p class="text-xs text-slate-600 dark:text-slate-400">切换 DeepSeek-V4-Flash / Qwen3.8 + DFlash 块扩散投机采样。</p>
+          </div>
+          <div class="p-5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <div class="text-xs font-bold text-purple-500 mb-1">阶梯 2 · 分布式两维解耦</div>
+            <div class="text-xl font-extrabold mb-2">2x – 4x Goodput</div>
+            <p class="text-xs text-slate-600 dark:text-slate-400">集群落地 PD 分离 + AM 分离 (JANUS) 消除资源搁浅与行头阻塞。</p>
+          </div>
+          <div class="p-5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <div class="text-xs font-bold text-pink-500 mb-1">阶梯 3 · 专用裸机引擎</div>
+            <div class="text-xl font-extrabold mb-2">2x – 3x 吞吐榨干</div>
+            <p class="text-xs text-slate-600 dark:text-slate-400">高频固定任务自研纯 C/CUDA 裸机引擎（mu25 范式），消除框架税。</p>
+          </div>
+          <div class="p-5 rounded-2xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <div class="text-xs font-bold text-emerald-500 mb-1">阶梯 4 · 端云协同与 UMA</div>
+            <div class="text-xl font-extrabold mb-2">100x+ 终局收益</div>
+            <p class="text-xs text-slate-600 dark:text-slate-400">高频敏感 Agent 下沉至 Mac Studio 512G / GB10，免除 API 与通信税。</p>
+          </div>
+        </div>
+
+        <!-- Interactive TCO Calculator -->
+        <div id="calculator" class="mt-12 p-8 rounded-3xl bg-gradient-to-br from-indigo-900/20 via-purple-900/10 to-slate-900/30 border border-indigo-500/30">
+          <h3 class="text-2xl font-black mb-2 flex items-center">
+            <span class="mr-3">🧮</span> 企业 Token 推理成本 & TCO 交互式测算器
+          </h3>
+          <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">
+            输入您的企业月 Token 消耗量与场景画像，实时对比「传统云 API」、「100x 全栈优化集群」与「端侧 UMA 常驻」的 TCO 支出：
+          </p>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-700 dark:text-slate-300">月 Token 消耗量 (百万 / M Tokens)</label>
+              <input type="number" id="calc-volume" value="500" class="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-bold text-lg" oninput="calculateTCO()" />
+              <span class="text-xs text-slate-500">例：500 代表 5 亿 Token/月</span>
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-700 dark:text-slate-300">Cache 命中率画像</label>
+              <select id="calc-cache" class="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-medium text-sm" onchange="calculateTCO()">
+                <option value="0.2">常规短文本问答 (20% Hit)</option>
+                <option value="0.5" selected>Agent 多轮工作流 (50% Hit)</option>
+                <option value="0.8">固定长文档 RAG / 代码分析 (80% Hit)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-wider mb-2 text-slate-700 dark:text-slate-300">部署策略倾向</label>
+              <select id="calc-strategy" class="w-full px-4 py-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 font-medium text-sm" onchange="calculateTCO()">
+                <option value="hybrid" selected>智能混合路由 (90% Flash + 10% 3T)</option>
+                <option value="all-flash">全量高频 Flash 阵营</option>
+                <option value="edge-uma">端侧 UMA 本地私有化常驻</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Calculation Results Output -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-200 dark:border-slate-800">
+            <div class="p-5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-red-500/20">
+              <div class="text-xs font-bold text-red-500 uppercase">传统闭源 API 方案月支出</div>
+              <div id="cost-legacy" class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">¥18,000</div>
+              <div class="text-xs text-slate-500 mt-1">基于 Claude 3.5 / GPT-4o 混调</div>
+            </div>
+            <div class="p-5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-emerald-500/30">
+              <div class="text-xs font-bold text-emerald-500 uppercase">100x 全栈优化后月支出</div>
+              <div id="cost-optimized" class="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">¥245</div>
+              <div class="text-xs text-slate-500 mt-1">V4-Flash + DFlash + 智能路由</div>
+            </div>
+            <div class="p-5 rounded-2xl bg-white/80 dark:bg-slate-900/80 border border-indigo-500/30">
+              <div class="text-xs font-bold text-indigo-500 uppercase">年化节省资金 (Savings)</div>
+              <div id="cost-savings" class="text-2xl sm:text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-1">¥213,060 <span class="text-xs text-emerald-500 font-bold">(-98.6%)</span></div>
+              <div class="text-xs text-slate-500 mt-1">ROI 回本周期 &lt; 1.5 个月</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-200 dark:border-slate-800 py-8 text-center text-xs text-slate-500 dark:text-slate-400">
+    <p>TokenResearch 2026 · AI 基础设施与大模型推理降本全景研究库</p>
+    <p class="mt-1">Generated for Internal Technical Presentation & Strategy Alignment</p>
+  </footer>
+
+  <script>
+    // Tab switching logic
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'dark:bg-slate-800', 'text-indigo-600', 'dark:text-indigo-400', 'shadow-sm');
+        btn.classList.add('text-slate-600', 'dark:text-slate-400');
+      });
+
+      const activeTab = document.getElementById(tabId);
+      const activeBtn = document.getElementById('btn-' + tabId);
+      if (activeTab) activeTab.classList.add('active');
+      if (activeBtn) {
+        activeBtn.classList.add('bg-white', 'dark:bg-slate-800', 'text-indigo-600', 'dark:text-indigo-400', 'shadow-sm');
+        activeBtn.classList.remove('text-slate-600', 'dark:text-slate-400');
+      }
+    }
+
+    // Dark mode toggle logic
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+    }
+
+    // TCO Calculator logic
+    function calculateTCO() {
+      const volumeM = parseFloat(document.getElementById('calc-volume').value) || 0;
+      const cacheHit = parseFloat(document.getElementById('calc-cache').value) || 0.5;
+      const strategy = document.getElementById('calc-strategy').value;
+
+      // Legacy cost approx $3.5 / M tokens * 7.2 RMB = ~25 RMB / M
+      const legacyRateRMB = 25.0;
+      const legacyMonthly = volumeM * legacyRateRMB;
+
+      // Optimized rates
+      let optRateRMB = 0.5; // Baseline RMB per M token
+      if (strategy === 'all-flash') {
+        optRateRMB = (0.22 * (1 - cacheHit) + 0.007 * cacheHit + 0.66 * 0.3) * 7.2 * 0.15;
+      } else if (strategy === 'hybrid') {
+        optRateRMB = (0.22 * (1 - cacheHit) + 0.007 * cacheHit + 0.66 * 0.3) * 7.2 * 0.18 + 0.3;
+      } else if (strategy === 'edge-uma') {
+        optRateRMB = 0.08; // Fixed electricity & amortized hardware
+      }
+
+      const optMonthly = Math.max(volumeM * optRateRMB, 15);
+      const savingsAnnual = Math.max((legacyMonthly - optMonthly) * 12, 0);
+      const savingsPercent = legacyMonthly > 0 ? ((1 - optMonthly / legacyMonthly) * 100).toFixed(1) : 0;
+
+      document.getElementById('cost-legacy').innerText = '¥' + Math.round(legacyMonthly).toLocaleString();
+      document.getElementById('cost-optimized').innerText = '¥' + Math.round(optMonthly).toLocaleString();
+      document.getElementById('cost-savings').innerHTML = '¥' + Math.round(savingsAnnual).toLocaleString() + ' <span class="text-xs text-emerald-500 font-bold">(-' + savingsPercent + '%)</span>';
+    }
+
+    // Initial calculation on load
+    calculateTCO();
+  </script>
+</body>
+</html>
