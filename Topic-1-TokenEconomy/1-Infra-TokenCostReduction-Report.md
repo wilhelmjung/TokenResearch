@@ -540,26 +540,29 @@ graph TB
 
 #### 4.3.3 异构算力协同调度（Heterogeneous Compute Scheduling）
 
-当前企业现实往往是"新旧卡混搭、国内外芯片并存"（H100 + H800 + H20 + 昇腾 910B/C + 边缘算力）。异构调度负责让各芯片"各司其职"：
+当前无论在**数据中心集群**还是**端侧/移动设备**中，“单一同构芯片垄断”已成为历史，必须依靠**异构算力协同调度**让各类计算单元各司其职：
 
-**1. 算力-负载阶段精准映射（Phase-Aware Mapping）**
-- **Prefill 阶段 & MoE 专家层** $\rightarrow$ 分配至高算力卡（H800、B200、Ascend 910C、OpenAI Jalapeño）
-- **Decode 阶段 & Attention 层** $\rightarrow$ 分配至高带宽/大显存卡（H20、AMD MI300X、Ascend 910B、GB10、Mac Studio）
+##### A. 数据中心级：跨代际与跨品牌 GPU / NPU / ASIC 混部
+1. **算力-负载阶段精准映射（Phase-Aware Mapping）**：
+   - **Prefill 阶段 & MoE 专家计算（GEMM 算力密集）** $\rightarrow$ 分配至高算力硬件（NVIDIA H800 / B200 / 华为昇腾 910C / OpenAI Jalapeño）；
+   - **Decode 阶段 & Attention 维护（GEMV 带宽密集）** $\rightarrow$ 分配至高带宽/低成本硬件（NVIDIA H20 4.0TB/s、AMD MI300X、L20、Mac Studio 512GB UMA）；
+2. **动态算子与拓扑调度（DOPS - Dynamic Operator Scheduling）**：
+   - 突破静态阶段绑定，根据各 GPU/NPU 节点的实时显存压力、显存带宽与互联拓扑，微秒级动态决定当前 Layer 的 Attention 与 GEMM 算子下发位置；
+3. **部分解耦预填充（Partially Disaggregated Prefill，如 Cronus / WAIT）**：
+   - 长 Prompt 浅层 Prefill 在高带宽卡预热流式计算，深层与 Decode 阶段在高算力卡重叠，降低 50% 跨卡 KV 搬运压力；
+4. **SLO-Goodput 导向调度**：
+   - 将延迟敏感的 VIP 请求分流至高算力池，高吞吐批处理请求沉淀至低成本异构算力池，实现单位 TCO 下有效产出最大化。
 
-**2. 部分解耦预填充（Partially Disaggregated Prefill，如 Cronus）**
-- 针对跨节点网络带宽受限的集群，采用流水线分段：长 Prompt 的浅层 Prefill 在低算力卡（如 H20）上预热流式计算，深层与 Decode 阶段在高算力卡（如 H800）上重叠，降低 50% 的跨卡 KV 搬运压力。
+##### B. 端侧/移动端 SoC 级：CPU + GPU + NPU 细粒度多核流水线
+1. **异构张量细粒度切分（如 HeteroInfer - SOSP '25）**：
+   - 在手机/边缘 SoC 内部，将动态 Attention 算子调度至 **GPU** 执行，将静态 FFN / 专家权重矩阵乘调度至 **NPU** 并行处理，突破移动端单核心显存带宽瓶颈；
+2. **多核异构协同流水线（如 PowerInfer-2）**：
+   - 利用 **NPU** 高能效计算静态神经元，**GPU** 加速动态热专家，**CPU** 负责轻量投机采样与内存调度，在智能手机端实现 47+ tok/s 极速离线推理；
+3. **统一内存零拷贝协同（如 Apple Silicon UMA / NVIDIA GB10）**：
+   - CPU 与 GPU 共享物理内存地址空间，CPU 负责分词与 Draft 小模型生成，GPU 负责单次大批次 Verify 验证，消除跨芯片总线搬运税。
 
-**3. 动态算子调度（DOPS - Dynamic Operator Scheduling）**
-- 突破静态阶段绑定，根据各 GPU 节点的实时显存压力、队列长度与互联拓扑，微秒级动态决定当前 Layer 的 Attention 与 GEMM 算子下发位置。
-
-**4. 流体随机控制调度（Fluid-Guided Scheduling，如 WAIT / Nested WAIT）**
-- 针对长尾生成长度未知的真实场景，利用随机控制理论实时调控 Prefill 准入速率与 Decode 迁移策略，彻底避免突发并发导致的显存 OOM 崩溃。
-
-**5. SLO-Goodput 导向优化**
-- 评估标尺从"原始吞吐（Tokens/s）"全面转向**满足 SLA 的有效吞吐（Goodput）**。通过将对延迟敏感的 VIP 请求调度至高算力池、容忍延迟的批处理请求沉淀至低成本异构池，实现单位 TCO 下有效价值产出最大化。
-
-**5. SLO-Goodput 导向优化**
-- 评估标尺从"原始吞吐（Tokens/s）"全面转向**满足 SLA 的有效吞吐（Goodput）**。通过将对延迟敏感的 VIP 请求调度至高算力池、容忍延迟的批处理请求沉淀至低成本异构池，实现单位 TCO 下有效价值产出最大化。
+> 📚 **学术前沿专栏**：
+> 详细顶会论文拆解见 [paper/README.md](file:///Users/will/github/TokenResearch/paper/README.md)（收录 SOSP '25 HeteroInfer、OSDI '25 XSched 等异构调度代表作）。
 
 ---
 
