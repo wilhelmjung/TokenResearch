@@ -84,7 +84,7 @@
         <span class="gradient-text">大模型推理 100 倍降本全栈架构与选型</span>
       </h1>
       <p class="max-w-3xl mx-auto text-lg sm:text-xl text-slate-600 dark:text-slate-400 font-normal leading-relaxed mb-10">
-        从宏观 Token 经济规律到微观芯片近存算子，打通「五层技术蛋糕 × 三大算力阵营 × 两维解耦调度 × SOTA 开源模型」，让每百万 Token 生产成本从 $1.00 跌至 $0.01。
+        从宏观 Token 经济规律到微观芯片近存算子，打通「五层技术蛋糕 × 三大算力阵营 × 两维解耦调度 × SOTA 开源模型 × IQ2/IQ4 混合量化」，让每百万 Token 生产成本从 $1.00 跌至 $0.01。
       </p>
 
       <!-- Key Metrics Showcase Grid -->
@@ -105,9 +105,9 @@
           <div class="text-xs text-slate-600 dark:text-slate-400 mt-1">OpenAI Jalapeño R1 实测</div>
         </div>
         <div class="glass-panel p-5 rounded-2xl shadow-sm hover:shadow-md transition">
-          <div class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">端侧千亿常驻</div>
-          <div class="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">512 GB <span class="text-sm font-semibold text-slate-500">UMA</span></div>
-          <div class="text-xs text-slate-600 dark:text-slate-400 mt-1">Mac Studio 桌面单机 670B</div>
+          <div class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">IQ2 混合量化常驻</div>
+          <div class="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">~195 GB <span class="text-sm font-semibold text-slate-500">UMA</span></div>
+          <div class="text-xs text-slate-600 dark:text-slate-400 mt-1">DeepSeek 671B 桌面单机常驻</div>
         </div>
       </div>
     </div>
@@ -203,7 +203,7 @@
               <span class="tag-badge bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200">5x – 10x 降本</span>
             </div>
             <p class="text-sm text-slate-600 dark:text-slate-400">
-              MoE 稀疏激活 (DeepSeek 284B/13B, Qwen 125B/6B)、MLA 多头潜在注意力压缩、DFlash 块扩散并行投机采样、51B N-gram 查表免 GEMM 算力。
+              MoE 稀疏激活 (DeepSeek 284B/13B, Qwen 125B/6B)、MLA 多头潜在注意力、<strong>IQ2 / IQ4 非线性格点与 I-Matrix 混合量化（8D 向量码本 ~2.06 bpw）</strong>、DFlash 块扩散并行投机采样、51B N-gram 查表免 GEMM 算力。
             </p>
           </div>
 
@@ -214,7 +214,7 @@
               <span class="tag-badge bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">2x – 4x 降本</span>
             </div>
             <p class="text-sm text-slate-600 dark:text-slate-400">
-              vLLM V1 / SGLang 运行环境、Continuous Batching 标配、专用纯 C/CUDA 裸机引擎（mu25 范式 / DS4.c 消除 Python 运行时税）、Triton 跨硬件内核。
+              vLLM V1 / SGLang 运行环境、Continuous Batching 标配、专用纯 C/CUDA 裸机引擎（mu25 范式 / DS4.c 消除 Python 运行时税与显存碎片）、Triton 跨硬件内核。
             </p>
           </div>
 
@@ -236,7 +236,7 @@
               <span class="tag-badge bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">1.5x – 2x 吞吐</span>
             </div>
             <p class="text-sm text-slate-600 dark:text-slate-400">
-              FlashAttention-3 / FlashMLA、UMA 统一内存零拷贝算子融合、Metal SDPA 寄存器驻留、Meta KernelEvolve / Kernel Forge Agent 自动化调优。
+              FlashAttention-3 / FlashMLA、<strong>IQ2/IQ4 寄存器就地融合反量化（Fused In-Register Dequant）</strong>、UMA 统一内存零拷贝算子融合、Metal SDPA 寄存器驻留、Meta KernelEvolve 自动化调优。
             </p>
           </div>
 
@@ -360,6 +360,33 @@
               <li>• <strong>突破</strong>：彻底消除 Python 框架税、GIL 锁与动态内存分配，实现编译期超级大融合。</li>
               <li>• <strong>实测</strong>：L20 / GB10 上 <strong>TTFT 缩短 20.9%，TPOT 缩短 27.3%，零显存泄漏</strong>。</li>
             </ul>
+          </div>
+
+          <!-- IQ2 / IQ4 Hybrid Quantization Card -->
+          <div class="md:col-span-2 border border-indigo-500/30 rounded-2xl p-6 bg-gradient-to-r from-indigo-900/20 via-purple-900/10 to-slate-900/30">
+            <div class="flex flex-wrap justify-between items-center mb-3">
+              <h3 class="text-xl font-bold text-indigo-500 dark:text-indigo-400 flex items-center">
+                <span class="mr-2">🧩</span> 极限低位宽突破：IQ2 / IQ4 非线性格点与 I-Matrix 混合量化
+              </h3>
+              <span class="tag-badge bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200">TCO 暴降 98.7%</span>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">
+              基于<strong>真实语料二阶敏感度（I-Matrix）</strong>与<strong>8 维空间向量格点码本（8D Codebook Grid）</strong>，彻底解决传统均匀量化在 2-bit 下困惑度雪崩的数学困境，是 671B 满血模型单机常驻的核心支柱：
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-slate-600 dark:text-slate-400">
+              <div class="p-4 rounded-xl bg-white/70 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+                <div class="font-bold text-blue-500 text-sm mb-1.5">① I-Matrix 敏感度保护</div>
+                按二阶导数加权寻优 $\min \sum I_{ij}(W - \hat{W})^2$，优先保全 5% 关键神经元，95% 冗余参数承担极限压缩。
+              </div>
+              <div class="p-4 rounded-xl bg-white/70 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+                <div class="font-bold text-purple-500 text-sm mb-1.5">② 8D 向量码本 (IQ2)</div>
+                8 个连续权重共享 1 字节 256 状态离散码本索引（~2.06 bpw），打破 2-bit 均匀定点量化的信息熵瓶颈。
+              </div>
+              <div class="p-4 rounded-xl bg-white/70 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700">
+                <div class="font-bold text-emerald-500 text-sm mb-1.5">③ 671B 满血单机常驻</div>
+                Attention/共享专家 (IQ4) + 256 稀疏专家 (IQ2)，671B 权重压至 <strong>~195GB</strong>，单台 Mac Studio 512G 即可常驻！
+              </div>
+            </div>
           </div>
         </div>
       </div>
