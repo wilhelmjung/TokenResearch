@@ -33,6 +33,9 @@ TokenResearch/
 │   ├── 3-mu25-L20-多模态专属裸机引擎实战.md # mu25 纯 C++/CUDA 裸机引擎在 L20/GB10 上的实测突破
 │   └── 4-Apple-MacStudio-M5-M6-Ultra-UMA.md  # Apple Mac Studio (512GB UMA) 桌面千亿模型常驻
 │
+├── paper/                       # 📚 顶会论文与异构推理学术前沿（SOSP/OSDI/EuroSys）
+│   └── README.md                             # 顶会论文列表索引与 EuroSys '27 libumsh 重点拆解
+│
 └── TODO.md                      # 📌 学术前沿与研究待办清单（ACL 2026 / ICML 2026 AI Infra 论文）
 ```
 
