@@ -1,6 +1,8 @@
 # TokenResearch: AI 基础设施、Token 经济学与算力芯片全景调研库
 
 > 本代码库系统研究大模型（LLM/VLM）时代的 **Token 经济学（Tokenomics）**、**AI 全栈基础设施（Infra）降本路径** 与 **全球算力芯片（Compute Hardware & ASICs）微架构与优化实战**。
+>
+> 🌐 **在线交互式汇报大屏 (Live Demo)**：👉 **[https://wilhelmjung.github.io/TokenResearch/](https://wilhelmjung.github.io/TokenResearch/)**（支持深浅色切换、图文架构动效与内置 TCO 测算器）
 
 ---
 
