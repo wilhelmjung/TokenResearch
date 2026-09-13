@@ -6,3 +6,6 @@ Thumbs.db
 *.tmp
 *.swp
 *~
+
+# Copyrighted source document
+paper/大模型推理基础设施全景.pdf

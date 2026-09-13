@@ -2,7 +2,7 @@
 
 > 本代码库系统研究大模型（LLM/VLM）时代的 **Token 经济学（Tokenomics）**、**AI 全栈基础设施（Infra）降本路径** 与 **全球算力芯片（Compute Hardware & ASICs）微架构与优化实战**。
 >
-> 🌐 **在线交互式汇报大屏 (Live Demo)**：👉 **[https://wilhelmjung.github.io/TokenResearch/](https://wilhelmjung.github.io/TokenResearch/)**（支持深浅色切换、图文架构动效与内置 TCO 测算器）
+> 🌐 **Token Research Institute 首页**：👉 **[https://wilhelmjung.github.io/TokenResearch/](https://wilhelmjung.github.io/TokenResearch/)**；**主题一交互报告**：👉 **[Topic-1-TokenEconomy/index.html](Topic-1-TokenEconomy/index.html)**（支持深浅色切换、图文架构动效与内置 TCO 测算器）
 
 ---
 
@@ -34,8 +34,18 @@ TokenResearch/
 │   ├── 3-mu25-L20-多模态专属裸机引擎实战.md # mu25 纯 C++/CUDA 裸机引擎在 L20/GB10 上的实测突破
 │   └── 4-Apple-MacStudio-M5-M6-Ultra-UMA.md  # Apple Mac Studio (512GB UMA) 桌面千亿模型常驻
 │
+├── InferenceBenchmarkSystem/    # 🎯 大模型推理 Benchmark 体系（MLPerf + EvalScope 精度与性能双闭环）
+│   ├── README.md                             # 目录索引与三重视角导引
+│   ├── index.html                            # 推理工程板块博客导读页
+│   ├── 1-Master-Architecture-and-Design-Principles.md # 🌟 全景架构、三层金字塔与 Token 经济学模型
+│   ├── 2-Accuracy-Benchmark-and-Gating.md    # 精度评测与质量门禁（MLPerf 99% 门禁与长文本衰减）
+│   ├── 3-Performance-Benchmark-and-Capacity.md # 性能压测与容量规划（Server/Offline/Edge 与 MBU）
+│   ├── 4-Tooling-Pipelines-and-Dashboards.md # 工具链落地与 CI 门禁（EvalScope 脚本与 Grafana 看板）
+│   └── 5-Execution-Plan.md                  # 架构方法论执行计划
+│
 ├── paper/                       # 📚 顶会论文与异构推理学术前沿（SOSP/OSDI/EuroSys）
-│   └── README.md                             # 顶会论文列表索引与 EuroSys '27 libumsh 重点拆解
+│   ├── README.md                             # 顶会论文列表索引与 EuroSys '27 libumsh 重点拆解
+│   └── 大模型推理基础设施全景-论文索引.md       # 98 条推理基础设施论文索引
 │
 ├── TODO.md                      # 📌 学术前沿与研究待办清单（ACL 2026 / ICML 2026 AI Infra 论文）
 └── gotchas.md                   # ⚠️ 项目格式与渲染避坑指南（LaTeX转义/Pages部署/混排规范）

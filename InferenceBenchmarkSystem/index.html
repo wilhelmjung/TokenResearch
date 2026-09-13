@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>大模型推理 Benchmark 体系 · 推理工程</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .gradient-text {
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(226, 232, 240, 0.9);
+    }
+    .dark .glass-panel {
+      background: rgba(15, 23, 42, 0.75);
+      border-color: rgba(51, 65, 85, 0.7);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
+  <header class="sticky top-0 z-10 border-b border-slate-200 glass-panel dark:border-slate-800">
+    <div class="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
+      <a href="./" class="flex items-center gap-3">
+        <span class="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-blue-600 via-indigo-500 to-pink-500 text-lg font-bold text-white shadow-lg shadow-indigo-500/30">⚡</span>
+        <span class="text-lg font-extrabold tracking-tight gradient-text">Inference Benchmark System</span>
+      </a>
+      <a href="../" class="rounded-lg bg-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:opacity-80 dark:bg-slate-800 dark:text-slate-300">🏠 板块首页</a>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 pb-20 pt-14 sm:px-6 sm:pt-20 lg:px-8">
+    <section class="text-center">
+      <div class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-700 dark:border-indigo-800 dark:bg-indigo-950/70 dark:text-indigo-300">推理工程 · Benchmark 体系</div>
+      <h1 class="mt-6 text-4xl font-extrabold leading-tight tracking-tight sm:text-6xl"><span class="gradient-text">大模型推理 Benchmark 体系</span></h1>
+      <p class="mx-auto mt-6 max-w-3xl text-lg leading-relaxed text-slate-600 dark:text-slate-400">融合 MLCommons MLPerf Inference 的工业严谨性与 ModelScope EvalScope 的工程敏捷性，把精度、性能、容量与成本放进同一条可复现决策链。</p>
+
+      <div class="mx-auto mt-10 grid max-w-5xl grid-cols-2 gap-4 text-left md:grid-cols-4">
+        <div class="glass-panel rounded-2xl p-5 shadow-sm">
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">统一视角</div>
+          <div class="mt-2 text-2xl font-black text-indigo-600 dark:text-indigo-400">3 层</div>
+          <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">PM / 应用开发 / Infra</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-5 shadow-sm">
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">负载场景</div>
+          <div class="mt-2 text-2xl font-black text-blue-600 dark:text-blue-400">4 类</div>
+          <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">Server / Offline / Edge / Power</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-5 shadow-sm">
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">质量门禁</div>
+          <div class="mt-2 text-2xl font-black text-emerald-600 dark:text-emerald-400">≥99%</div>
+          <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">相对 FP16 基准</p>
+        </div>
+        <div class="glass-panel rounded-2xl p-5 shadow-sm">
+          <div class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">成本指标</div>
+          <div class="mt-2 text-2xl font-black text-pink-600 dark:text-pink-400">CPM-Q</div>
+          <p class="mt-1 text-xs text-slate-600 dark:text-slate-400">真实合格 Token 成本</p>
+        </div>
+      </div>
+    </section>
+
+    <section aria-label="三方视角" class="mt-16">
+      <h2 class="text-2xl font-extrabold sm:text-3xl">同一套数据，服务三类决策者</h2>
+      <p class="mt-3 max-w-3xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">传统评测的问题是业务、应用与基础设施各说各话。这里用三层指标金字塔把体感、调试证据与物理瓶颈贯通。</p>
+      <div class="mt-6 grid gap-5 md:grid-cols-3">
+        <article class="glass-panel rounded-3xl p-7 shadow-sm">
+          <div class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">PM / Business</div>
+          <h3 class="mt-3 text-xl font-extrabold">能不能用，多少钱，能撑多少</h3>
+          <p class="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">任务完成率、SLA 承载容量、有效 Token 成本与候选方案排序。</p>
+          <div class="mt-5 flex flex-wrap gap-2 text-xs font-bold text-slate-600 dark:text-slate-300"><span class="rounded-full bg-slate-200 px-3 py-1 dark:bg-slate-800">Pass Rate</span><span class="rounded-full bg-slate-200 px-3 py-1 dark:bg-slate-800">Capacity</span><span class="rounded-full bg-slate-200 px-3 py-1 dark:bg-slate-800">CPM-Q</span></div>
+        </article>
+        <article class="glass-panel rounded-3xl p-7 shadow-sm">
+          <div class="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">App Developer</div>
+          <h3 class="mt-3 text-xl font-extrabold">为什么变慢、变笨或解析失败</h3>
+          <p class="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">JSON Schema 合规率、Tool Calling 契约、长上下文衰减与前缀缓存收益。</p>
+          <div class="mt-5 flex flex-wrap gap-2 text-xs font-bold text-slate-600 dark:text-slate-300"><span class="rounded-full bg-slate-200 px-3 py-1 dark:bg-slate-800">Schema</span><span class="rounded-full bg-slate-200 px-3 py-1 dark:bg-slate-800">Needle</span><span class="rounded-full bg-slate-200 px-3 py-1 dark:bg-slate-800">Cache</span></div>
+        </article>
+        <article class="glass-panel rounded-3xl p-7 shadow-sm">
+          <div class="text-xs font-bold uppercase tracking-wider text-pink-600 dark:text-pink-400">Infra Engineer</div>
+          <h3 class="mt-3 text-xl font-extrabold">瓶颈在哪，优化是否有效</h3>
+          <p class="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">TTFT / TPOT 分位数、Goodput 拐点、MBU 访存利用率与显存碎片率。</p>
+          <div class="mt-5 flex flex-wrap gap-2 text-xs font-bold text-slate-600 dark:text-slate-300"><span class="rounded-full bg-slate-200 px-3 py-1 dark:bg-slate-800">P99</span><span class="rounded-full bg-slate-200 px-3 py-1 dark:bg-slate-800">Goodput</span><span class="rounded-full bg-slate-200 px-3 py-1 dark:bg-slate-800">MBU</span></div>
+        </article>
+      </div>
+    </section>
+
+    <section aria-label="评测闭环" class="mt-16">
+      <h2 class="text-2xl font-extrabold sm:text-3xl">从压测结果到上线决策</h2>
+      <div class="glass-panel mt-6 rounded-3xl p-6 sm:p-8">
+        <div class="flex flex-wrap items-center justify-center gap-3 text-xs font-bold sm:text-sm"><span class="rounded-xl bg-slate-200 px-4 py-2 dark:bg-slate-800">场景与负载</span><span class="text-slate-400">→</span><span class="rounded-xl bg-blue-600 px-4 py-2 text-white">精度门禁</span><span class="text-slate-400">→</span><span class="rounded-xl bg-slate-200 px-4 py-2 dark:bg-slate-800">性能压测</span><span class="text-slate-400">→</span><span class="rounded-xl bg-slate-200 px-4 py-2 dark:bg-slate-800">Profiling 归因</span><span class="text-slate-400">→</span><span class="rounded-xl bg-slate-200 px-4 py-2 dark:bg-slate-800">容量与成本</span><span class="text-slate-400">→</span><span class="rounded-xl bg-emerald-600 px-4 py-2 text-white">CI 红绿灯</span></div>
+        <p class="mt-6 text-center text-sm leading-relaxed text-slate-600 dark:text-slate-400">每次运行都固定场景、模型 digest、推理栈、硬件环境、数据集、负载分布、随机种子、SLA 与基线版本，保证结果可复现、可比较、可回滚。</p>
+      </div>
+    </section>
+
+    <section aria-label="博客文章" class="mt-16">
+      <div class="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h2 class="text-2xl font-extrabold sm:text-3xl">系列文章</h2>
+          <p class="mt-2 text-sm text-slate-600 dark:text-slate-400">从架构原则到执行计划的五篇推理工程笔记。</p>
+        </div>
+        <a href="https://github.com/wilhelmjung/TokenResearch/tree/main/InferenceBenchmarkSystem" class="text-sm font-bold text-indigo-600 hover:underline dark:text-indigo-400">在 GitHub 查看 Markdown 源文档 →</a>
+      </div>
+      <div class="mt-6 grid gap-5 lg:grid-cols-2">
+        <a href="https://github.com/wilhelmjung/TokenResearch/blob/main/InferenceBenchmarkSystem/1-Master-Architecture-and-Design-Principles.md" class="glass-panel group rounded-3xl p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl lg:col-span-2">
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div><div class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">01 · 主文档</div><h3 class="mt-3 text-2xl font-extrabold">大模型推理 Benchmark 全景架构与设计原则</h3></div>
+            <span class="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">已开放</span>
+          </div>
+          <p class="mt-4 max-w-4xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">定义三层指标穿透金字塔、MLPerf 与 EvalScope 的融合方式，以及 Goodput / CPM-Q 背后的 Token 经济学模型。</p>
+          <span class="mt-5 inline-flex items-center gap-2 text-sm font-bold text-indigo-600 dark:text-indigo-400">阅读全文 <span class="transition group-hover:translate-x-1">→</span></span>
+        </a>
+        <a href="https://github.com/wilhelmjung/TokenResearch/blob/main/InferenceBenchmarkSystem/2-Accuracy-Benchmark-and-Gating.md" class="glass-panel group rounded-3xl p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+          <div class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">02 · Accuracy</div>
+          <h3 class="mt-3 text-xl font-extrabold">精度评测与质量门禁体系</h3>
+          <p class="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">用 ≥99% FP16 基准、JSON Schema、Tool Calling、LLM-as-a-Judge 与 Needle 衰减曲线防止“快但不可用”。</p>
+          <span class="mt-5 inline-flex items-center gap-2 text-sm font-bold text-indigo-600 dark:text-indigo-400">阅读全文 <span class="transition group-hover:translate-x-1">→</span></span>
+        </a>
+        <a href="https://github.com/wilhelmjung/TokenResearch/blob/main/InferenceBenchmarkSystem/3-Performance-Benchmark-and-Capacity.md" class="glass-panel group rounded-3xl p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+          <div class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">03 · Performance</div>
+          <h3 class="mt-3 text-xl font-extrabold">性能压测与容量规划体系</h3>
+          <p class="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">覆盖 Server、Offline、Edge 与 Power 场景，用 SLA Auto-Tune 找 Goodput 拐点，用 MBU / MFU 定位物理瓶颈。</p>
+          <span class="mt-5 inline-flex items-center gap-2 text-sm font-bold text-indigo-600 dark:text-indigo-400">阅读全文 <span class="transition group-hover:translate-x-1">→</span></span>
+        </a>
+        <a href="https://github.com/wilhelmjung/TokenResearch/blob/main/InferenceBenchmarkSystem/4-Tooling-Pipelines-and-Dashboards.md" class="glass-panel group rounded-3xl p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+          <div class="text-xs font-bold uppercase tracking-wider text-purple-600 dark:text-purple-400">04 · Engineering</div>
+          <h3 class="mt-3 text-xl font-extrabold">工具链实战与三视角看板</h3>
+          <p class="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">从 EvalScope 压测脚本、生产 Trace 回放、CI/CD 门禁到 PM / 开发 / Infra 三套 Grafana 面板。</p>
+          <span class="mt-5 inline-flex items-center gap-2 text-sm font-bold text-indigo-600 dark:text-indigo-400">阅读全文 <span class="transition group-hover:translate-x-1">→</span></span>
+        </a>
+        <a href="https://github.com/wilhelmjung/TokenResearch/blob/main/InferenceBenchmarkSystem/5-Execution-Plan.md" class="glass-panel group rounded-3xl p-7 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
+          <div class="text-xs font-bold uppercase tracking-wider text-pink-600 dark:text-pink-400">05 · Execution</div>
+          <h3 class="mt-3 text-xl font-extrabold">架构方法论执行计划</h3>
+          <p class="mt-3 text-sm leading-relaxed text-slate-600 dark:text-slate-400">定义三层交付、四大技术域、共享证据链、Agent Benchmark 语义，以及七项执行工作流。</p>
+          <span class="mt-5 inline-flex items-center gap-2 text-sm font-bold text-indigo-600 dark:text-indigo-400">阅读全文 <span class="transition group-hover:translate-x-1">→</span></span>
+        </a>
+      </div>
+    </section>
+
+    <section aria-label="四周落地路线" class="mt-16">
+      <h2 class="text-2xl font-extrabold sm:text-3xl">四周落地路线</h2>
+      <div class="mt-6 grid gap-4 md:grid-cols-4">
+        <div class="glass-panel rounded-3xl p-6"><div class="text-xs font-bold text-indigo-600 dark:text-indigo-400">第 1 周</div><h3 class="mt-2 text-lg font-extrabold">工具链就绪</h3><p class="mt-2 text-sm text-slate-600 dark:text-slate-400">跑通 vLLM / SGLang 基线，稳定复现 P50 / P99 TTFT 与 TPOT。</p></div>
+        <div class="glass-panel rounded-3xl p-6"><div class="text-xs font-bold text-emerald-600 dark:text-emerald-400">第 2 周</div><h3 class="mt-2 text-lg font-extrabold">黄金数据集</h3><p class="mt-2 text-sm text-slate-600 dark:text-slate-400">建立 500 条业务 Golden Dataset 与 Schema / Tool 调用校验。</p></div>
+        <div class="glass-panel rounded-3xl p-6"><div class="text-xs font-bold text-blue-600 dark:text-blue-400">第 3 周</div><h3 class="mt-2 text-lg font-extrabold">SLA 容量寻优</h3><p class="mt-2 text-sm text-slate-600 dark:text-slate-400">测定各机型最大带载容量，输出 Goodput 拐点与部署台数建议。</p></div>
+        <div class="glass-panel rounded-3xl p-6"><div class="text-xs font-bold text-pink-600 dark:text-pink-400">第 4 周</div><h3 class="mt-2 text-lg font-extrabold">CI 与看板</h3><p class="mt-2 text-sm text-slate-600 dark:text-slate-400">上线自动回归门禁和三视角 Grafana 大屏，形成红绿灯决策。</p></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-200 py-8 text-center text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400"><p>Token Research Institute · 推理工程板块</p></footer>
+</body>
+</html>
