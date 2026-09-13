@@ -17,6 +17,7 @@
 | ⏱️ **XSched** | *XSched: Preemptive Scheduling for Diverse XPUs* | **OSDI '25** | 异构硬件加速器（GPU/NPU/ASIC）统一抢占式调度与 XQueue 抽象 | [USENIX Open Access](https://www.usenix.org/conference/osdi25) |
 | 🧩 **HeteroInfer** | *Characterizing Mobile SoC for Accelerating Heterogeneous LLM Inference* | **SOSP '25** | 手机端 GPU 与 NPU 协同异构并行与硬件感知张量切分 | [ACM DL](https://dl.acm.org/) |
 | 🛡️ **Sereno** | *Inference in the Shadows: Taming Memory Bandwidth Contention in Mobile LLM Inference with Sereno* | **OSDI '26** | 移动端大模型多处理器共享内存的带宽争用缓解与动态隔离 | [USENIX OSDI '26](https://www.usenix.org/) |
+| 🤖 **AMPD** | *Efficient Multi-round LLM Inference over Disaggregated Serving* | **arXiv 2026** | Agent/RAG 多轮工作流下的增量 Prefill 自适应路由与 SLO 调度 | [arXiv](https://arxiv.org/abs/2602.14516) / [解读](AMPD-2026-多轮LLM推理解耦服务解读.md) |
 
 ---
 
@@ -112,6 +113,14 @@
 * **核心突破**：
   * 深入分析了在移动端 UMA 架构下，大模型自回归解码（Memory-bound 访存密集型）与后台多媒体/渲染任务并发时严重的**内存总线带宽争用（Bandwidth Contention）**；
   * 提出操作系统级的软硬件协同带宽监控与动态流控机制，保障大模型常驻交互式推理的确定性低延迟。
+
+### 5. AMPD：多轮 LLM 推理下的解耦服务（2026）
+* **题目**：*Efficient Multi-round LLM Inference over Disaggregated Serving*
+* **论文链接**：[arXiv:2602.14516](https://arxiv.org/abs/2602.14516) ｜ [独立解读](AMPD-2026-多轮LLM推理解耦服务解读.md)
+* **核心突破**：
+  * 将 Agent/RAG 中的工具结果、检索文档和环境反馈抽象为反复插入的**增量 Prefill** 任务；
+  * 根据实时 TTFT/ITL 余量、排队时间和 KV cache 传输成本，动态决定 Prefill 在 Decode worker 本地还是远程 Prefill worker 执行；
+  * 配合 TTFT-aware 队列重排与离线部署规划，提高同样 GPU 资源下满足延迟 SLO 的请求比例。
 
 ---
 
