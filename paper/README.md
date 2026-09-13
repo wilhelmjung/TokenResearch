@@ -15,7 +15,7 @@
 | 🚀 **PowerInfer** | *PowerInfer: Fast Large Language Model Serving with a Consumer-grade GPU* | **SOSP '24** | 神经元激活幂律分布 × 消费级 GPU+CPU 混合高吞吐推理 | [GitHub (18k+ ⭐)](https://github.com/SJTU-IPADS/PowerInfer) / [arXiv](https://arxiv.org/abs/2312.12456) |
 | 📱 **PowerInfer-2** | *PowerInfer-2: Fast Large Language Model Inference on Smartphones* | **Preprint** | 智能手机 SoC 异构多核流水线与张量级细粒度编排 | [GitHub](https://github.com/SJTU-IPADS/PowerInfer-2) / [arXiv](https://arxiv.org/abs/2406.06282) |
 | ⏱️ **XSched** | *XSched: Preemptive Scheduling for Diverse XPUs* | **OSDI '25** | 异构硬件加速器（GPU/NPU/ASIC）统一抢占式调度与 XQueue 抽象 | [USENIX Open Access](https://www.usenix.org/conference/osdi25) |
-| 🧩 **HeteroInfer** | *Characterizing Mobile SoC for Accelerating Heterogeneous LLM Inference* | **SOSP '25** | 手机端 GPU 与 NPU 协同异构并行与硬件感知张量切分 | [ACM DL](https://dl.acm.org/) |
+| 🧩 **HeteroInfer** | *Characterizing Mobile SoC for Accelerating Heterogeneous LLM Inference* | **SOSP '25** | 手机端 GPU 与 NPU 协同异构并行与硬件感知张量切分 | [ACM DL](https://dl.acm.org/doi/10.1145/3731569.3764808) / [arXiv](https://arxiv.org/abs/2501.14794) / [本地 PDF](HeteroInfer-SOSP25-Characterizing-Mobile-SoC-for-Accelerating-Heterogeneous-LLM-Inference.pdf) |
 | 🛡️ **Sereno** | *Inference in the Shadows: Taming Memory Bandwidth Contention in Mobile LLM Inference with Sereno* | **OSDI '26** | 移动端大模型多处理器共享内存的带宽争用缓解与动态隔离 | [USENIX OSDI '26](https://www.usenix.org/) |
 | 🤖 **AMPD** | *Efficient Multi-round LLM Inference over Disaggregated Serving* | **arXiv 2026** | Agent/RAG 多轮工作流下的增量 Prefill 自适应路由与 SLO 调度 | [arXiv](https://arxiv.org/abs/2602.14516) / [解读](AMPD-2026-多轮LLM推理解耦服务解读.md) |
 
@@ -102,7 +102,7 @@
 
 ### 3. HeteroInfer (SOSP '25)
 * **题目**：*Characterizing Mobile SoC for Accelerating Heterogeneous LLM Inference*
-* **论文链接**：[ACM Digital Library (SOSP '25)](https://dl.acm.org/)
+* **论文链接**：[ACM Digital Library (SOSP '25)](https://dl.acm.org/doi/10.1145/3731569.3764808) ｜ [arXiv](https://arxiv.org/abs/2501.14794) ｜ [本地 PDF](HeteroInfer-SOSP25-Characterizing-Mobile-SoC-for-Accelerating-Heterogeneous-LLM-Inference.pdf)
 * **核心突破**：
   * 针对智能手机 SoC 算力分散、单计算单元（如纯 NPU 或纯 GPU）显存和算力吞吐受限的瓶颈；
   * 设计细粒度张量混合切分算子与异步流水线，让 GPU 与 NPU 同步并发计算，显著缩短端侧大模型首字延迟（TTFT）与解码延迟（TPOT）。

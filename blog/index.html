@@ -1,0 +1,2474 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>超越 vLLM：Qwen3.6-27B-FP8 混合架构在 MU25 CUDA 原生裸金属引擎上的极限优化与全景战报</title>
+  <meta name="description" content="MU25 CUDA-Native 裸金属推理引擎在 Qwen3.6-27B-FP8 混合架构（48层 DeltaNet + 16层 Full Attention）上的全链路优化实战：TTFT 181.92ms (-11.4%)、TPOT 17.61ms/tok (+28.5%)、AIME 2026 5/5 满分闭环及底层 CUDA 内核级算子优化全景。">
+  <!-- Chart.js for interactive analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0a0c10;
+      --bg-secondary: #12151c;
+      --bg-card: rgba(22, 27, 36, 0.75);
+      --bg-card-hover: rgba(30, 36, 48, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(76, 175, 80, 0.3);
+      --text-primary: #f0f3f6;
+      --text-secondary: #9aa5b5;
+      --text-muted: #64748b;
+      --accent-green: #10b981;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-amber: #f59e0b;
+      --accent-cyan: #06b6d4;
+      --glow-green: rgba(16, 185, 129, 0.15);
+      --glow-blue: rgba(59, 130, 246, 0.15);
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.7;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .ambient-glow {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 600px;
+      background: radial-gradient(circle at 50% -10%, rgba(59, 130, 246, 0.12), transparent 70%),
+                  radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.08), transparent 50%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Navigation Bar */
+    header.site-header {
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(10, 12, 16, 0.85);
+      border-bottom: 1px solid var(--border-color);
+      z-index: 100;
+      padding: 0.85rem 2rem;
+    }
+
+    .nav-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 700;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan));
+      color: #000;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.35rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text-primary);
+    }
+
+    /* Main Container */
+    main.content-container {
+      position: relative;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 3.5rem 1.5rem 6rem;
+      z-index: 1;
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      margin-bottom: 4rem;
+      padding: 2rem 0;
+    }
+
+    .hero-meta-badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.6rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+
+    .badge-primary {
+      background: rgba(16, 185, 129, 0.12);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: var(--accent-green);
+    }
+
+    .badge-blue {
+      background: rgba(59, 130, 246, 0.12);
+      border-color: rgba(59, 130, 246, 0.3);
+      color: var(--accent-blue);
+    }
+
+    .hero-title {
+      font-size: 2.75rem;
+      font-weight: 800;
+      line-height: 1.25;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, #ffffff 30%, #a5b4fc 80%, #6ee7b7 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+      max-width: 920px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.8;
+    }
+
+    /* Hero Summary Box (Option 4) */
+    .hero-summary-box {
+      background: rgba(18, 22, 30, 0.75);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 1.6rem 2.2rem;
+      max-width: 980px;
+      margin: 0 auto 2.75rem;
+      text-align: left;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+      position: relative;
+    }
+
+    .hero-summary-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 10%;
+      right: 10%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.5), rgba(59, 130, 246, 0.5), transparent);
+    }
+
+    .summary-lead {
+      font-size: 1.12rem;
+      color: #f8fafc;
+      font-weight: 500;
+      line-height: 1.7;
+      margin-bottom: 1.1rem;
+    }
+
+    .summary-lead strong {
+      color: #fff;
+    }
+
+    .summary-grid {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+      gap: 0.85rem 1.75rem;
+    }
+
+    @media (max-width: 640px) {
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+      .hero-summary-box {
+        padding: 1.25rem 1.25rem;
+      }
+    }
+
+    .summary-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      color: var(--text-secondary);
+      font-size: 0.96rem;
+      line-height: 1.6;
+    }
+
+    .summary-item .item-icon {
+      font-size: 1.15rem;
+      line-height: 1.4;
+      flex-shrink: 0;
+    }
+
+    .summary-item strong {
+      color: #fff;
+    }
+
+    .delta-pill {
+      display: inline-block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      margin-left: 0.35rem;
+      vertical-align: middle;
+    }
+
+    .delta-pill.blue {
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--accent-blue);
+      border-color: rgba(59, 130, 246, 0.25);
+    }
+
+    /* Stat Cards Grid */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem;
+      backdrop-filter: blur(12px);
+      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent-green), var(--accent-blue));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+    }
+
+    .stat-card:hover::before {
+      opacity: 1;
+    }
+
+    .stat-label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-value {
+      font-size: 2.1rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+      margin-bottom: 0.4rem;
+    }
+
+    .stat-value.highlight-green {
+      color: var(--accent-green);
+    }
+
+    .stat-value.highlight-blue {
+      color: var(--accent-blue);
+    }
+
+    .stat-sub {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+
+    .stat-delta {
+      font-weight: 700;
+      color: var(--accent-green);
+    }
+
+    /* Section Typography & Style */
+    section {
+      margin-bottom: 4.5rem;
+    }
+
+    .section-header {
+      margin-bottom: 2rem;
+    }
+
+    .section-tag {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 0.5rem;
+      display: inline-block;
+    }
+
+    .section-title {
+      font-size: 1.9rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #fff;
+      margin-bottom: 0.75rem;
+    }
+
+    .section-description {
+      color: var(--text-secondary);
+      font-size: 1.05rem;
+      max-width: 900px;
+    }
+
+    /* Chart Container Grid */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+      gap: 1.75rem;
+      margin-bottom: 2.5rem;
+    }
+
+    @media (max-width: 640px) {
+      .chart-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.75rem;
+      position: relative;
+    }
+
+    .chart-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+      color: #fff;
+    }
+
+    .chart-caption {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+    }
+
+    .chart-canvas-wrapper {
+      position: relative;
+      height: 280px;
+      width: 100%;
+    }
+
+    
+    /* Side-by-Side Architecture Stage */
+    .arch-compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2.5rem;
+    }
+
+    @media (max-width: 1080px) {
+      .arch-compare-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .arch-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.6rem;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+      position: relative;
+    }
+
+    .arch-card.highlight {
+      border-color: rgba(56, 189, 248, 0.4);
+      background: linear-gradient(180deg, rgba(15, 23, 42, 0.9) 0%, rgba(11, 15, 25, 0.95) 100%);
+      box-shadow: 0 12px 36px rgba(56, 189, 248, 0.1);
+    }
+
+    .arch-card-header {
+      margin-bottom: 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 1rem;
+    }
+
+    .arch-card-header .badge {
+      margin-bottom: 0.6rem;
+    }
+
+    .arch-card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.35rem;
+    }
+
+    .arch-card-subtitle {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    .arch-card-visual {
+      background: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      cursor: zoom-in;
+      min-height: 380px;
+      padding: 0.5rem;
+    }
+
+    .arch-card-visual img {
+      width: 100%;
+      height: auto;
+      max-height: 460px;
+      object-fit: contain;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+
+    .arch-card-visual:hover img {
+      transform: scale(1.02);
+    }
+
+    .arch-zoom-hint {
+      position: absolute;
+      bottom: 10px;
+      right: 12px;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #94a3b8;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      pointer-events: none;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .arch-analysis-block {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .arch-point-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      font-size: 0.90rem;
+      line-height: 1.6;
+      color: var(--text-secondary);
+    }
+
+    .arch-point-item .point-icon {
+      flex-shrink: 0;
+      font-size: 1.1rem;
+      line-height: 1.4;
+    }
+
+    .arch-point-item strong {
+      color: #fff;
+    }
+
+    .arch-table-container {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.75rem 2rem;
+      margin-bottom: 2.5rem;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    }
+
+    .arch-table-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.4rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .arch-table-desc {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin-bottom: 1.25rem;
+    }
+
+    /* Modal / Lightbox for high-res image */
+    .img-lightbox-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(4, 7, 14, 0.94);
+      backdrop-filter: blur(14px);
+      z-index: 10000;
+      justify-content: center;
+      align-items: center;
+      padding: 2.5rem;
+      cursor: zoom-out;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+
+    .img-lightbox-modal.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .img-lightbox-content {
+      max-width: 92vw;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: #ffffff;
+    }
+
+    .img-lightbox-close {
+      position: absolute;
+      top: 24px;
+      right: 32px;
+      font-size: 2.4rem;
+      color: #94a3b8;
+      cursor: pointer;
+      font-weight: 300;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+
+    .img-lightbox-close:hover {
+      color: #fff;
+    }
+
+    /* Architecture Visual Diagrams */
+    .architecture-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    /* Interactive Kernel Tabs */
+    .tabs-wrapper {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 2.5rem;
+    }
+
+    .tab-nav {
+      display: flex;
+      flex-wrap: wrap;
+      background: rgba(18, 21, 28, 0.9);
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.5rem 0.75rem 0;
+      gap: 0.5rem;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      border-bottom: none;
+      color: var(--text-secondary);
+      padding: 0.65rem 1.1rem;
+      border-radius: 8px 8px 0 0;
+      font-family: var(--font-sans);
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .tab-btn.active {
+      color: #fff;
+      background: var(--bg-card);
+      border-color: var(--border-color);
+      border-top: 2px solid var(--accent-green);
+    }
+
+    .tab-pane {
+      display: none;
+      padding: 2rem;
+    }
+
+    .tab-pane.active {
+      display: block;
+    }
+
+    .kernel-desc-box {
+      margin-bottom: 1.25rem;
+    }
+
+    .kernel-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+
+    .kernel-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .kernel-points {
+      list-style: none;
+      margin-top: 0.75rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .kernel-points li {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+    }
+
+    .kernel-points li strong {
+      color: #e2e8f0;
+    }
+
+    /* Modern Table Styles */
+    .table-container {
+      width: 100%;
+      overflow-x: auto;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      margin-bottom: 2.5rem;
+    }
+
+    table.benchmark-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    table.benchmark-table th {
+      background: rgba(255, 255, 255, 0.03);
+      padding: 1rem 1.25rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      border-bottom: 1px solid var(--border-color);
+      white-space: nowrap;
+    }
+
+    table.benchmark-table td {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+      white-space: nowrap;
+    }
+
+    table.benchmark-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    table.benchmark-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .cell-pass {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      color: var(--accent-green);
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    .cell-fail {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      color: #ef4444;
+      font-weight: 700;
+      background: rgba(239, 68, 68, 0.1);
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+    }
+
+    .cell-highlight {
+      color: var(--accent-green);
+      font-weight: 700;
+    }
+
+    /* Breakthrough Cards */
+    .breakthrough-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 3rem;
+    }
+
+    .breakthrough-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.75rem;
+      position: relative;
+    }
+
+    .breakthrough-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .breakthrough-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.75rem;
+    }
+
+    .breakthrough-content {
+      color: var(--text-secondary);
+      font-size: 0.92rem;
+      line-height: 1.7;
+    }
+
+    .breakthrough-content code {
+      font-family: var(--font-mono);
+      background: rgba(255, 255, 255, 0.08);
+      color: #e2e8f0;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-size: 0.85em;
+    }
+
+    /* AIME Gallery Grid */
+    .aime-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .aime-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .aime-img-wrap {
+      background: #1a1e27;
+      padding: 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px solid var(--border-color);
+      min-height: 160px;
+    }
+
+    .aime-img-wrap img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .aime-body {
+      padding: 1.25rem;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .aime-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.6rem;
+    }
+
+    .aime-tag {
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      text-transform: uppercase;
+    }
+
+    .aime-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 0.5rem;
+    }
+
+    .aime-details {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+      flex: 1;
+    }
+
+    /* Code Blocks */
+    pre.code-block {
+      background: #0d1117;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      color: #c9d1d9;
+      overflow-x: auto;
+      line-height: 1.6;
+      margin: 1rem 0;
+    }
+
+    .code-keyword { color: #ff7b72; }
+    .code-type { color: #79c0ff; }
+    .code-func { color: #d2a8ff; }
+    .code-var { color: #ffa657; }
+    .code-comment { color: #8b949e; font-style: italic; }
+    .code-num { color: #a5d6ff; }
+    .code-macro { color: #ff7b72; font-weight: bold; }
+
+    /* Footer */
+    footer.site-footer {
+      border-top: 1px solid var(--border-color);
+      padding: 3rem 1.5rem;
+      background: var(--bg-secondary);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .footer-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+
+    .footer-links a:hover {
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-glow"></div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="nav-container">
+      <div class="brand">
+        <a href="../" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.25rem 0.65rem;margin-right:0.6rem;border-radius:6px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#cbd5e1;text-decoration:none;font-size:0.8rem;font-weight:600;transition:all 0.2s;">🏠 首页</a>
+        <span>MU25</span>
+        <span class="brand-badge">CUDA NATIVE</span>
+      </div>
+      <nav>
+        <ul class="nav-links">
+          <li><a href="#overview">核心指标</a></li>
+          <li><a href="#benchmark">性能对标</a></li>
+          <li><a href="#architecture">架构与算子融合</a></li>
+          <li><a href="#kernels">底层算子内核</a></li>
+          <li><a href="#breakthroughs">核心突破</a></li>
+          <li><a href="#aime2026">AIME 2026</a></li>
+          <li><a href="#data-tables">完整数据</a></li>
+          <li><a href="#future">未来路线</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="content-container">
+
+    <!-- Hero Section -->
+    <section class="hero" id="overview">
+      <div class="hero-meta-badges">
+        <span class="badge badge-primary">🚀 4× NVIDIA L20 (Ada SM 8.9) TP=4</span>
+        <span class="badge badge-blue">⚡️ Qwen3.6-27B-FP8 混合推理架构</span>
+        <span class="badge">🎯 100% Exact Match 精度闭环</span>
+        <span class="badge">🏆 AIME 2026 5/5 满分解题</span>
+      </div>
+      <h1 class="hero-title">超越 vLLM：Qwen3.6-27B-FP8 混合架构<br>在 MU25 CUDA 裸金属推理引擎上的极限优化</h1>
+      <!-- Hero Summary Box (Option 4) -->
+      <div class="hero-summary-box">
+        <p class="summary-lead">
+          在 <strong>4× NVIDIA L20（TP=4）</strong> 服务器上，深度攻坚 <strong>48 层 Gated DeltaNet 线性注意力</strong> 与 <strong>16 层 Full Attention</strong> 旗舰混合架构：
+        </p>
+        <ul class="summary-grid">
+          <li class="summary-item">
+            <span class="item-icon">⚡️</span>
+            <div>全链路端到端首字时延达到 <strong>181.92 ms</strong> <span class="delta-pill">领先 vLLM 11.4% (-24.1 ms)</span></div>
+          </li>
+          <li class="summary-item">
+            <span class="item-icon">🚀</span>
+            <div>自回归持续解码吞吐达到 <strong>56.8 tok/s</strong> <span class="delta-pill blue">领先 vLLM 28.5% (+12.6 tok/s)</span></div>
+          </li>
+          <li class="summary-item">
+            <span class="item-icon">🏆</span>
+            <div>完成 AIME 2026 竞赛数学 <strong>5/5 (100.0%)</strong> <span class="delta-pill">满分解题闭环 (领先 +20%)</span></div>
+          </li>
+          <li class="summary-item">
+            <span class="item-icon">💎</span>
+            <div>彻底实现纯 <strong>C++ 原生硬件调度</strong> 与 <strong>零 Python 运行时开销</strong></div>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Stat Grid -->
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">CUDA TTFT (首字时延)</div>
+          <div class="stat-value highlight-green">181.92 <span style="font-size:1.1rem;font-weight:600">ms</span></div>
+          <div class="stat-sub">
+            vLLM: 206.06 ms <span class="stat-delta">(-24.1 ms / 领先 11.4%)</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">Decode TPOT (解码时延)</div>
+          <div class="stat-value highlight-green">17.61 <span style="font-size:1.1rem;font-weight:600">ms/tok</span></div>
+          <div class="stat-sub">
+            vLLM: 22.62 ms/tok <span class="stat-delta">(提速 28.5%)</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">Decode 吞吐率 (TPS)</div>
+          <div class="stat-value highlight-blue">56.78 <span style="font-size:1.1rem;font-weight:600">tok/s</span></div>
+          <div class="stat-sub">
+            vLLM: 44.20 tok/s <span class="stat-delta">(净胜 +12.6 tok/s)</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">AIME 2026 数学解题率</div>
+          <div class="stat-value highlight-green">5 / 5 <span style="font-size:1.1rem;font-weight:600">(100%)</span></div>
+          <div class="stat-sub">
+            vLLM: 4 / 5 (80.0%) <span class="stat-delta">(领先 +20.0%)</span>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">AIME 5 题端到端净省耗时</div>
+          <div class="stat-value highlight-blue">107.43 <span style="font-size:1.1rem;font-weight:600">s</span></div>
+          <div class="stat-sub">
+            MU: 353.2s vs vLLM: 460.6s <span class="stat-delta">(省近 1.8 分钟)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 1: Charts & Benchmarks -->
+    <section id="benchmark">
+      <div class="section-header">
+        <span class="section-tag">Empirical Data & Performance</span>
+        <h2 class="section-title">全景性能对标与时延拆解</h2>
+        <p class="section-description">
+          所有测试均在真实 8× NVIDIA L20（环境 116，GPUs 4-7）上执行，严格采用公平多模态计时契约（`--fair-ttft`），对标常驻 9025 端口官方 vLLM TP4 实例。
+        </p>
+      </div>
+
+      <!-- Chart Grid -->
+      <div class="chart-grid">
+        <div class="chart-card">
+          <div class="chart-title">首字时延 (TTFT) 阶段演进与对标 vLLM</div>
+          <div class="chart-caption">单位: ms（越低越快）。展示从初始全 fallback 到原生 W8A8 与 Vision Cache 的攻坚历程</div>
+          <div class="chart-canvas-wrapper">
+            <canvas id="ttftMilestoneChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">持续解码吞吐量 (Throughput) 对比</div>
+          <div class="chart-caption">单位: tokens/s（越高越好）。在 512 步长与 4096 步长下均持续领先 28%+</div>
+          <div class="chart-canvas-wrapper">
+            <canvas id="tpsChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">AIME 2026 高难度竞赛数学逐题耗时对比</div>
+          <div class="chart-caption">单位: 秒 (s)。在 4096-Token 统一标准下，MU25 每题平均提早 21.5 秒完成</div>
+          <div class="chart-canvas-wrapper">
+            <canvas id="aimeLatencyChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title">GPU Prefill 物理硬件耗时精细拆解 (222.8 ms)</div>
+          <div class="chart-caption">单位: ms。GPU 硬件紧密填充，Host CPU 调度已 100% 完全隐匿</div>
+          <div class="chart-canvas-wrapper">
+            <canvas id="prefillBreakdownChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+        <!-- Section 2: Architecture Deep Dive -->
+    <section id="architecture">
+      <div class="section-header">
+        <span class="section-tag">Hybrid Architecture &amp; Bare-Metal Operator Fusion</span>
+        <h2 class="section-title">Qwen3.6-27B 混合架构深度剖析与 MU25 算子融合演进</h2>
+        <p class="section-description">
+          Qwen3.6-27B 采用业界前沿的 64 层 3:1 混合推理架构：由 <strong>48 层 Gated DeltaNet（线性循环注意力，以 O(1) 空间常数级维系超长上下文动态记忆）</strong> 与 <strong>16 层 Full Attention（带因果掩码与局部 M-RoPE 的全注意力，保障精确联想检索）</strong> 周期交织而成。以下深入对比理论设计原图与 MU25 硬件原生极限融合执行图。
+        </p>
+      </div>
+
+      <!-- Part 1: Side-by-Side Blueprint Comparison -->
+      <div class="arch-compare-grid">
+        <!-- Card 1: Original Theoretical Blueprint -->
+        <div class="arch-card">
+          <div class="arch-card-header">
+            <span class="badge">理论基准架构 (Baseline Blueprint)</span>
+            <h3 class="arch-card-title">Qwen3.6-27B 理论架构设计</h3>
+            <p class="arch-card-subtitle">64 层 3:1 混合架构 / 离散算子与标准数据流（参考：Sebastian Raschka 架构深度剖析）</p>
+          </div>
+          <div class="arch-card-visual" onclick="openLightbox('assets/qwen36_original_arch.png')">
+            <img src="assets/qwen36_original_arch.png" alt="Qwen3.6 27B Original Architecture Blueprint by Sebastian Raschka">
+            <div class="arch-zoom-hint"><span>🔍</span> 点击放大高清原图</div>
+          </div>
+          <div class="arch-analysis-block">
+            <div class="arch-point-item">
+              <span class="point-icon">📐</span>
+              <div><strong>64 层 3:1 循环交织拓扑</strong>：模型全网由 <strong>48 层 Gated DeltaNet</strong> 与 <strong>16 层 Full Attention</strong> 构成。每经历 3 层线性注意力层后插入 1 层全注意力层，序列兼具线性常数级解码复杂度与精确联想召回能力。</div>
+            </div>
+            <div class="arch-point-item">
+              <span class="point-icon">⚡️</span>
+              <div><strong>Gated Attention 离散链路</strong>：输入先经 4 组独立 Linear 投影出 Q, K, V 与 Sigmoid 门控；Q, K 经 RMSNorm 与局部 RoPE 旋转后，送入标准 Scaled Dot-Product Attention，最后与门控值逐元素点乘 $\otimes$ 并输出。</div>
+            </div>
+            <div class="arch-point-item">
+              <span class="point-icon">🔄</span>
+              <div><strong>Gated DeltaNet 状态机制</strong>：输入投影后，Q/K 与 V 分别经过因果卷积 Conv1d、激活函数 $\sigma$ 与 L2 Norm，送入 Gated Delta Rule 算子更新内部 64KB SSM 状态矩阵，再经独立 RMSNorm 与 SiLU 门控逐元素相乘。</div>
+            </div>
+            <div class="arch-point-item">
+              <span class="point-icon">⚠️</span>
+              <div><strong>通用框架物理瓶颈</strong>：在 HuggingFace 或传统推理引擎中，每层包含 <strong>14+ 个独立离散算子</strong>。残差与 RMSNorm 分立导致每层两次 DRAM 往返；自回归解码每步 48 层产生 <strong>147MB SSM 状态 DRAM 读写</strong> 与寄存器 Spill；跨卡 AllGather 传输 608KB Logits 耗时达 5.2ms。</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Card 2: MU25 Optimized & Fused Blueprint -->
+        <div class="arch-card highlight">
+          <div class="arch-card-header">
+            <span class="badge badge-primary">MU25 原生极限融合 (MU25 Bare-Metal Fusion)</span>
+            <h3 class="arch-card-title">MU25 硬件原生极限融合架构</h3>
+            <p class="arch-card-subtitle">零 DRAM 冗余 / 跨层融合 / 128-bit 寄存器持久驻留 / TP4 8 字节极限规约</p>
+          </div>
+          <div class="arch-card-visual" onclick="openLightbox('assets/mu25_optimized_arch.svg')">
+            <img src="assets/mu25_optimized_arch.svg" alt="MU25 Fused and Optimized Qwen3.6 Architecture Diagram">
+            <div class="arch-zoom-hint"><span>🔍</span> 点击放大高清矢量图</div>
+          </div>
+          <div class="arch-analysis-block">
+            <div class="arch-point-item">
+              <span class="point-icon">💎</span>
+              <div><strong>跨层残差与 RMSNorm 一体化融合 (Cross-Layer Norm Fusion)</strong>：<code>mu_prefill_fused_add_rmsnorm</code> 将上一层残差相加与下一层输入 RMSNorm 压入单 Kernel，全网消灭 <strong>128 次独立发射与 786MB DRAM 往返</strong>。</div>
+            </div>
+            <div class="arch-point-item">
+              <span class="point-icon">🚀</span>
+              <div><strong>128-bit float4 向量化寄存器持久驻留 (Decode)</strong>：DeltaNet 解码每步将 128 个状态重构为 32 个 <code>float4</code> 驻留寄存器 <code>r_cache[32]</code>，<strong>0 DRAM 重复读写与 Spill</strong>，单层耗时从 22.5 µs 压降至 <strong>7.7 µs (2.90x 加速)</strong>。</div>
+            </div>
+            <div class="arch-point-item">
+              <span class="point-icon">🎯</span>
+              <div><strong>Stride-Aware 4-in-1 GEMM (N=4096) 零拷贝</strong>：DeltaNet 输入投影合并为单次 GEMM，以 4096 跨步直接传给 Conv1d 与 DeltaNet，<strong>消灭 96 次独立调度与 DRAM 中间切片</strong>。</div>
+            </div>
+            <div class="arch-point-item">
+              <span class="point-icon">🛡️</span>
+              <div><strong>16 层稀疏 KV Cache + Precision Guard 守卫</strong>：KV Cache 仅对 16 个全注意力层分配（<strong>立省 6.5GB</strong>）；Layer 0~2 强制 BF16 精度防线锁定 <strong>100% Exact Match</strong>，深层 W8A8 释放 <strong>77.1ms</strong> 提速红利。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Part 2: Quantitative Optimization Matrix Table -->
+      <div class="arch-table-container">
+        <div class="arch-table-title">
+          <span>📊</span> Qwen3.6-27B 架构级极致优化与开销消除矩阵
+        </div>
+        <p class="arch-table-desc">
+          系统量化展示从理论离散实现到 MU25 硬件原生融合在算子数量、显存带宽流量与执行时延上的全面消除效果：
+        </p>
+        <div class="table-container" style="margin-bottom: 0;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 14%;">架构模块</th>
+                <th style="width: 21%;">标准框架基准实现 (Baseline)</th>
+                <th style="width: 25%;">MU25 硬件原生极限融合实现</th>
+                <th style="width: 14%;">内核调度削减</th>
+                <th style="width: 14%;">DRAM 显存带宽</th>
+                <th style="width: 12%;">实测单步收益</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Token Ingress</strong></td>
+                <td>查表写入全局显存 → 调用 Layer 0 RMSNorm</td>
+                <td><code>mu_fused_embed_rmsnorm</code> 一体化查表直通</td>
+                <td><span class="badge badge-primary">-1 发射 / 步</span></td>
+                <td>消除 20KB DRAM 往返</td>
+                <td><span class="highlight-green">削减 Graph 节点</span></td>
+              </tr>
+              <tr>
+                <td><strong>层间残差传递</strong></td>
+                <td>残差加法写存 → 读存 RMSNorm (每层 2 次)</td>
+                <td><code>mu_prefill_fused_add_rmsnorm</code> 跨层融合</td>
+                <td><span class="badge badge-primary">-128 发射 / 步</span></td>
+                <td><strong>消除 786 MB 往返</strong></td>
+                <td><span class="highlight-green">+18.5 ms TTFT</span></td>
+              </tr>
+              <tr>
+                <td><strong>DeltaNet 投影</strong></td>
+                <td>in_proj_qkv (2560) + in_proj_z (1536) 两次 GEMM</td>
+                <td><strong>Stride-Aware 4-in-1 GEMM (N=4096)</strong> 零拷贝</td>
+                <td><span class="badge badge-primary">-96 发射 / 步</span></td>
+                <td>消除中间切片 DRAM 缓存</td>
+                <td><span class="highlight-green">+14.7 ms TTFT</span></td>
+              </tr>
+              <tr>
+                <td><strong>DeltaNet Prefill</strong></td>
+                <td>动态分配 8 个中间张量 (全网 384 次申请/释放)</td>
+                <td>Triton Chunked DeltaNet 全局零分配持久张量池</td>
+                <td>消除 Allocator 锁竞争</td>
+                <td>零动态显存申请</td>
+                <td><span class="highlight-green">+8.4 ms TTFT</span></td>
+              </tr>
+              <tr>
+                <td><strong>DeltaNet Decode</strong></td>
+                <td>128 次标量展开循环，2 读 2 写 SSM 状态 (147MB)</td>
+                <td><strong>128-bit float4 寄存器驻留更新 (<code>r_cache[32]</code>)</strong></td>
+                <td>Spill 溢出降为 0</td>
+                <td><strong>消除 147 MB 往返</strong></td>
+                <td><span class="highlight-green">22.5µs → 7.7µs (2.9x)</span></td>
+              </tr>
+              <tr>
+                <td><strong>Full Attention</strong></td>
+                <td>对全网 64 层统一分配 KV Cache，长上下文串行遍历</td>
+                <td><strong>16 层稀疏映射 + Split-K d256 两阶段并行规约</strong></td>
+                <td>Chunk 并行多 Block 调度</td>
+                <td><strong>立省 6.5 GB 显存</strong></td>
+                <td><span class="highlight-green">32K TPOT 提速 5.59x</span></td>
+              </tr>
+              <tr>
+                <td><strong>FFN (SwiGLU)</strong></td>
+                <td>离散反量化至 BF16 (21GB 搬运) 或浅层 W8A8 塌陷</td>
+                <td>Gate/Up 别名 + <strong>Precision Guard 分级 W8A8</strong></td>
+                <td>融合 SwiGLU 旁路</td>
+                <td><strong>立省 11.4 GB 显存</strong></td>
+                <td><span class="highlight-green">+77.1 ms (100% 精度)</span></td>
+              </tr>
+              <tr>
+                <td><strong>LM Head 规约</strong></td>
+                <td>计算全量 152k logits 或多卡通信 608KB Logits</td>
+                <td><strong>TP4 列并行切分 + 8 字节 NCCL AllGather</strong></td>
+                <td>通信量压缩 76,000x</td>
+                <td>消灭 608KB Logits 通信</td>
+                <td><span class="highlight-green">5.2ms → 0.4ms (13x)</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Part 3: Multi-GPU Hardware Topology SVG -->
+      <div class="architecture-box">
+        <div style="margin-bottom: 1.25rem;">
+          <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 0.3rem; display: flex; align-items: center; gap: 0.5rem;">
+            <span>🖥️</span> 4× NVIDIA L20 (TP=4) 物理拓扑与分布式硬件执行流水线
+          </h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">
+            从逻辑计算图到 4 张 PCIe L20 硬件的映射：端到端包含 GPU 双三次插值视觉前处理、64 层混合主干与 TP4 分布式 Argmax 规约。
+          </p>
+        </div>
+
+        <!-- SVG Architecture Diagram (Topology) -->
+        <svg viewBox="0 0 1060 480" width="100%" height="auto" style="display:block;margin:0 auto;font-family:var(--font-mono);">
+          <defs>
+            <linearGradient id="gradViT" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="#1d4ed8" stop-opacity="0.1"/>
+            </linearGradient>
+            <linearGradient id="gradDeltaTopo" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#10b981" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="#047857" stop-opacity="0.1"/>
+            </linearGradient>
+            <linearGradient id="gradAttnTopo" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="#6d28d9" stop-opacity="0.1"/>
+            </linearGradient>
+            <linearGradient id="gradHeadTopo" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.3"/>
+              <stop offset="100%" stop-color="#b45309" stop-opacity="0.1"/>
+            </linearGradient>
+            <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 8 5 L 0 9 z" fill="#64748b" />
+            </marker>
+          </defs>
+
+          <!-- Input Flow -->
+          <rect x="20" y="70" width="170" height="340" rx="12" fill="url(#gradViT)" stroke="#3b82f6" stroke-width="1.5"/>
+          <text x="105" y="105" fill="#60a5fa" font-size="14" font-weight="700" text-anchor="middle">Vision Ingress</text>
+          <text x="105" y="130" fill="#94a3b8" font-size="11" text-anchor="middle">27-Layer ViT Blocks</text>
+          
+          <rect x="35" y="150" width="140" height="50" rx="6" fill="#1e293b" stroke="#475569"/>
+          <text x="105" y="172" fill="#cbd5e1" font-size="11" text-anchor="middle">Bicubic &amp; Norm (GPU)</text>
+          <text x="105" y="188" fill="#64748b" font-size="10" text-anchor="middle">0.60 ms (C++)</text>
+
+          <rect x="35" y="215" width="140" height="50" rx="6" fill="#1e293b" stroke="#475569"/>
+          <text x="105" y="237" fill="#cbd5e1" font-size="11" text-anchor="middle">27 ViT Blocks (SDPA)</text>
+          <text x="105" y="253" fill="#64748b" font-size="10" text-anchor="middle">2.60 ms launch / 40.9ms</text>
+
+          <rect x="35" y="280" width="140" height="50" rx="6" fill="#1e293b" stroke="#475569"/>
+          <text x="105" y="302" fill="#cbd5e1" font-size="11" text-anchor="middle">2x2 Spatial Merger</text>
+          <text x="105" y="318" fill="#64748b" font-size="10" text-anchor="middle">4608 -&gt; 5120 channels</text>
+
+          <rect x="35" y="345" width="140" height="45" rx="6" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981"/>
+          <text x="105" y="367" fill="#6ee7b7" font-size="11" font-weight="700" text-anchor="middle">Vision Cache (就地)</text>
+          <text x="105" y="382" fill="#6ee7b7" font-size="10" text-anchor="middle">对齐 mm_proc 缓存</text>
+
+          <!-- Arrow to LLM -->
+          <line x1="190" y1="240" x2="235" y2="240" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <!-- 64-Layer Hybrid Transformer -->
+          <rect x="240" y="30" width="530" height="420" rx="14" fill="#111827" stroke="#374151" stroke-width="1.5"/>
+          <text x="505" y="60" fill="#f3f4f6" font-size="15" font-weight="700" text-anchor="middle">Qwen3.6 64-Layer Hybrid Backbone (TP=4)</text>
+          <text x="505" y="78" fill="#9ca3af" font-size="11" text-anchor="middle">Hidden: 5120 | Intermediate: 17408 | Head Dim: 256</text>
+
+          <!-- DeltaNet Sub-box (48 Layers) -->
+          <rect x="260" y="100" width="490" height="155" rx="10" fill="url(#gradDeltaTopo)" stroke="#10b981" stroke-width="1.2"/>
+          <text x="275" y="125" fill="#34d399" font-size="13" font-weight="700">48 × Gated DeltaNet Layers (线性循环状态递推)</text>
+          
+          <rect x="275" y="140" width="225" height="50" rx="6" fill="#1e293b" stroke="#334155"/>
+          <text x="387" y="162" fill="#f1f5f9" font-size="11" text-anchor="middle">Stride-Aware Zero-Copy</text>
+          <text x="387" y="178" fill="#94a3b8" font-size="10" text-anchor="middle">4-in-1 GEMM (N=4096) 零切片</text>
+
+          <rect x="515" y="140" width="220" height="50" rx="6" fill="#1e293b" stroke="#334155"/>
+          <text x="625" y="162" fill="#f1f5f9" font-size="11" text-anchor="middle">C++ 直发 Triton Delta</text>
+          <text x="625" y="178" fill="#94a3b8" font-size="10" text-anchor="middle">零 GIL / 零显存分配持久池</text>
+
+          <rect x="275" y="198" width="460" height="42" rx="6" fill="rgba(16, 185, 129, 0.15)" stroke="#10b981"/>
+          <text x="505" y="217" fill="#a7f3d0" font-size="11" font-weight="700" text-anchor="middle">Decode: 128-bit float4 向量化寄存器驻留更新</text>
+          <text x="505" y="231" fill="#6ee7b7" font-size="10" text-anchor="middle">单步仅 7.7 µs/层 (2.90x 加速) | 寄存器从 255 降至 42</text>
+
+          <!-- Full Attention Sub-box (16 Layers) -->
+          <rect x="260" y="270" width="490" height="110" rx="10" fill="url(#gradAttnTopo)" stroke="#8b5cf6" stroke-width="1.2"/>
+          <text x="275" y="295" fill="#c084fc" font-size="13" font-weight="700">16 × Full Attention Layers (Sliding/Full KV Cache)</text>
+
+          <rect x="275" y="310" width="225" height="55" rx="6" fill="#1e293b" stroke="#334155"/>
+          <text x="387" y="332" fill="#f1f5f9" font-size="11" text-anchor="middle">M-RoPE 3D 旋转位置编码</text>
+          <text x="387" y="348" fill="#94a3b8" font-size="10" text-anchor="middle">[3, T, half_rotary] 轴步长对齐</text>
+
+          <rect x="515" y="310" width="220" height="55" rx="6" fill="#1e293b" stroke="#334155"/>
+          <text x="625" y="332" fill="#f1f5f9" font-size="11" text-anchor="middle">Split-K d256 两阶段规约</text>
+          <text x="625" y="348" fill="#94a3b8" font-size="10" text-anchor="middle">32K 上下文 TPOT 提速 5.59x</text>
+
+          <!-- SwiGLU & Precision Guard Strip -->
+          <rect x="260" y="390" width="490" height="45" rx="8" fill="rgba(245, 158, 11, 0.12)" stroke="#f59e0b"/>
+          <text x="505" y="410" fill="#fcd34d" font-size="11" font-weight="700" text-anchor="middle">Precision Guard 分级守卫 + Fused SwiGLU FP8 Direct Bypass</text>
+          <text x="505" y="425" fill="#fbbf24" font-size="10" text-anchor="middle">Layer 0-2 BF16 精度防线 | Layer 3-63 原生 W8A8 (净省 77.1ms)</text>
+
+          <!-- Arrow to LM Head -->
+          <line x1="770" y1="240" x2="815" y2="240" stroke="#64748b" stroke-width="2" marker-end="url(#arrow)"/>
+
+          <!-- LM Head & Distributed Argmax -->
+          <rect x="820" y="90" width="210" height="300" rx="12" fill="url(#gradHeadTopo)" stroke="#f59e0b" stroke-width="1.5"/>
+          <text x="925" y="125" fill="#fcd34d" font-size="14" font-weight="700" text-anchor="middle">LM Head &amp; Argmax</text>
+          <text x="925" y="145" fill="#94a3b8" font-size="11" text-anchor="middle">Vocab: 152,064 tokens</text>
+
+          <rect x="835" y="165" width="180" height="55" rx="6" fill="#1e293b" stroke="#475569"/>
+          <text x="925" y="187" fill="#f1f5f9" font-size="11" text-anchor="middle">列并行切分 (TP=4)</text>
+          <text x="925" y="203" fill="#64748b" font-size="10" text-anchor="middle">各 GPU 负责 38,016 词</text>
+
+          <rect x="835" y="230" width="180" height="55" rx="6" fill="#1e293b" stroke="#475569"/>
+          <text x="925" y="252" fill="#f1f5f9" font-size="11" text-anchor="middle">256 线程共享内存规约</text>
+          <text x="925" y="268" fill="#64748b" font-size="10" text-anchor="middle">耗时 &lt; 0.08 ms (消灭 6.3ms)</text>
+
+          <rect x="835" y="295" width="180" height="60" rx="6" fill="rgba(16, 185, 129, 0.2)" stroke="#10b981"/>
+          <text x="925" y="318" fill="#6ee7b7" font-size="11" font-weight="700" text-anchor="middle">8 字节 NCCL AllGather</text>
+          <text x="925" y="333" fill="#6ee7b7" font-size="10" text-anchor="middle">消灭 608KB Logits 通信</text>
+          <text x="925" y="347" fill="#6ee7b7" font-size="10" text-anchor="middle">支持 CUDA Graph 捕获</text>
+        </svg>
+      </div>
+    </section>
+
+    <!-- Section 3: Deep Operator & Kernel Optimization Matrix (NEW) -->
+    <section id="kernels">
+      <div class="section-header">
+        <span class="section-tag">Core Operator & Kernel Engineering</span>
+        <h2 class="section-title">核心内核与算子级极致优化技术剖析</h2>
+        <p class="section-description">
+          从底层 PTX 硬件指令、128-bit 向量化寄存器编排到多卡 NCCL 分布式通信收缩，全方位解析 MU25 引擎在 Ada Lovelace 架构上压榨硬件极限的六大算子黑科技。
+        </p>
+      </div>
+
+      <!-- Interactive Kernel Tabs -->
+      <div class="tabs-wrapper">
+        <div class="tab-nav">
+          <button class="tab-btn active" onclick="switchKernelTab(0)">1. DeltaNet 128-bit 向量化状态寄存器驻留</button>
+          <button class="tab-btn" onclick="switchKernelTab(1)">2. 跨层残差与 RMSNorm 一体化融合</button>
+          <button class="tab-btn" onclick="switchKernelTab(2)">3. 1.5 µs 硬件指令解码 RMSNorm</button>
+          <button class="tab-btn" onclick="switchKernelTab(3)">4. Split-K KV Cache 两阶段并行规约</button>
+          <button class="tab-btn" onclick="switchKernelTab(4)">5. 分布式 LM Head 与 8 字节双字 AllGather</button>
+          <button class="tab-btn" onclick="switchKernelTab(5)">6. Stride-Aware 4-in-1 GEMM 跨步感知零拷贝</button>
+        </div>
+
+        <!-- Tab 1: DeltaNet 128-bit -->
+        <div class="tab-pane active" id="kernel-tab-0">
+          <div class="kernel-desc-box">
+            <h3 class="kernel-title">
+              mu_gated_deltanet_decode_step_kernel
+              <span class="kernel-badge">2.90x 提速 · 7.7 µs/层</span>
+            </h3>
+            <p style="color:var(--text-secondary);font-size:0.92rem;">
+              在单步自回归解码（$S=1$）阶段，每个 Token 需对 48 层的 SSM 状态矩阵执行矩阵向量状态累加更新。原始实现采用 128 次标量循环，触发 2 次读和 2 次写，产生大量 Local Memory Spill，单层耗时高达 22.5 µs。
+            </p>
+            <ul class="kernel-points">
+              <li><strong>128-bit 向量化访存</strong>：采用 32 个 <code>float4</code> 单次连续加载整行状态至寄存器 <code>r_cache[32]</code>。</li>
+              <li><strong>寄存器原地融合更新</strong>：在寄存器中计算 <code>v_pred</code>，立即融合 <code>v_err</code> 完成状态矩阵原位累加并单次就地写回 DRAM。</li>
+              <li><strong>零 Memory Spill</strong>：寄存器数量从 255 骤降至 42，Spill 彻底清零，48 层总耗时减少 1.40 ms/step！</li>
+            </ul>
+          </div>
+          <pre class="code-block"><code><span class="code-comment">// 源码节选自 src/mu_attn_flashinfer.cu (L4890-4923)</span>
+<span class="code-comment">// Single-pass Read + Write with register caching (32 float4, 128-bit vectorized)</span>
+<span class="code-keyword">const</span> <span class="code-type">float4</span>* in_row4 = <span class="code-keyword">reinterpret_cast</span>&lt;<span class="code-keyword">const</span> <span class="code-type">float4</span>*&gt;(row_ptr);
+<span class="code-type">float4</span>* out_row4 = <span class="code-keyword">reinterpret_cast</span>&lt;<span class="code-type">float4</span>*&gt;(row_ptr);
+<span class="code-type">float4</span> r_cache[<span class="code-num">32</span>];
+
+<span class="code-type">float</span> v_pred = <span class="code-num">0.0f</span>;
+<span class="code-macro">#pragma unroll</span>
+<span class="code-keyword">for</span> (<span class="code-type">int</span> v_i = <span class="code-num">0</span>; v_i &lt; <span class="code-num">32</span>; ++v_i) {
+    <span class="code-type">float4</span> r = in_row4[v_i];
+    r_cache[v_i] = r; <span class="code-comment">// 单次读取并锁存至物理寄存器</span>
+    <span class="code-type">int</span> j = v_i * <span class="code-num">4</span>;
+    v_pred += (r.x * alpha) * s_k[j + <span class="code-num">0</span>] + (r.y * alpha) * s_k[j + <span class="code-num">1</span>] +
+              (r.z * alpha) * s_k[j + <span class="code-num">2</span>] + (r.w * alpha) * s_k[j + <span class="code-num">3</span>];
+}
+
+<span class="code-type">float</span> v_err = (v_val - v_pred) * beta;
+<span class="code-macro">#pragma unroll</span>
+<span class="code-keyword">for</span> (<span class="code-type">int</span> v_i = <span class="code-num">0</span>; v_i &lt; <span class="code-num">32</span>; ++v_i) {
+    <span class="code-type">float4</span> r = r_cache[v_i];
+    <span class="code-type">int</span> j = v_i * <span class="code-num">4</span>;
+    <span class="code-type">float4</span> out_r;
+    out_r.x = r.x * alpha + v_err * s_k[j + <span class="code-num">0</span>];
+    out_r.y = r.y * alpha + v_err * s_k[j + <span class="code-num">1</span>];
+    out_r.z = r.z * alpha + v_err * s_k[j + <span class="code-num">2</span>];
+    out_r.w = r.w * alpha + v_err * s_k[j + <span class="code-num">3</span>];
+    out_row4[v_i] = out_r; <span class="code-comment">// 原位就地写回，彻底杜绝 DRAM 重复访问</span>
+}</code></pre>
+        </div>
+
+        <!-- Tab 2: Fused Residual Norm -->
+        <div class="tab-pane" id="kernel-tab-1">
+          <div class="kernel-desc-box">
+            <h3 class="kernel-title">
+              mu_prefill_fused_add_rmsnorm_bf16_kernel
+              <span class="kernel-badge">消灭 128 次 Launch · 节省 786MB DRAM</span>
+            </h3>
+            <p style="color:var(--text-secondary);font-size:0.92rem;">
+              在 64 层前向推理中，第 $l$ 层 MLP 输出残差加法与第 $l+1$ 层输入 RMSNorm 属于串行强依赖操作。传统框架分开调用导致全网 64 层产生 128 次独立发射与高达 786MB 的中间显存读写往返。
+            </p>
+            <ul class="kernel-points">
+              <li><strong>128-bit uint4 向量打包加载</strong>：单指令载入 8 个 BF16 元素并解包进行 FMA 累加。</li>
+              <li><strong>双路并行写出</strong>：单次显存读取同时写回更新残差分支 <code>res_row</code>，并计算出下一层归一化张量 <code>norm_row</code>。</li>
+              <li><strong>Warp-level __shfl_xor_sync 树状规约</strong>：线程束内无锁规约平方和，消除 Block 同步等待。</li>
+            </ul>
+          </div>
+          <pre class="code-block"><code><span class="code-comment">// 源码节选自 src/mu_attn_flashinfer.cu (L6200-6230)</span>
+<span class="code-type">float</span> sum_sq = <span class="code-num">0.0f</span>;
+<span class="code-type">uint32_t</span> idx = tid * <span class="code-num">8</span>;
+<span class="code-keyword">for</span> (; idx + <span class="code-num">8</span> &lt;= cols; idx += bsize * <span class="code-num">8</span>) {
+    <span class="code-keyword">const</span> <span class="code-type">uint4</span> p1 = *<span class="code-keyword">reinterpret_cast</span>&lt;<span class="code-keyword">const</span> <span class="code-type">uint4</span>*&gt;(in1_row + idx);
+    <span class="code-keyword">const</span> <span class="code-type">uint4</span> p2 = *<span class="code-keyword">reinterpret_cast</span>&lt;<span class="code-keyword">const</span> <span class="code-type">uint4</span>*&gt;(in2_row + idx);
+    <span class="code-type">uint16_t</span> sum_h[<span class="code-num">8</span>];
+    <span class="code-macro">#pragma unroll</span>
+    <span class="code-keyword">for</span> (<span class="code-type">int</span> e = <span class="code-num">0</span>; e &lt; <span class="code-num">8</span>; ++e) {
+        <span class="code-type">float</span> s = mu_bf16_to_f32(h1[e]) + mu_bf16_to_f32(h2[e]);
+        sum_h[e] = mu_f32_to_bf16_rn(s);
+        sum_sq = fmaf(s, s, sum_sq); <span class="code-comment">// 累加平方和用于 RMSNorm</span>
+    }
+    *<span class="code-keyword">reinterpret_cast</span>&lt;<span class="code-type">uint4</span>*&gt;(res_row + idx) = *<span class="code-keyword">reinterpret_cast</span>&lt;<span class="code-keyword">const</span> <span class="code-type">uint4</span>*&gt;(sum_h);
+}
+<span class="code-comment">// Warp-level 无锁规约</span>
+<span class="code-macro">#pragma unroll</span>
+<span class="code-keyword">for</span> (<span class="code-type">int</span> offset = <span class="code-num">16</span>; offset &gt; <span class="code-num">0</span>; offset &gt;&gt;= <span class="code-num">1</span>) {
+    sum_sq += __shfl_xor_sync(<span class="code-num">0xffffffff</span>, sum_sq, offset);
+}</code></pre>
+        </div>
+
+        <!-- Tab 3: Hardware RMSNorm -->
+        <div class="tab-pane" id="kernel-tab-2">
+          <div class="kernel-desc-box">
+            <h3 class="kernel-title">
+              mu_decode_rmsnorm_bf16_kernel
+              <span class="kernel-badge">200x 提速 · 0.28 ms -> 1.5 µs</span>
+            </h3>
+            <p style="color:var(--text-secondary);font-size:0.92rem;">
+              解码自回归阶段单步仅处理 1 行。旧 PTX 算子按每线程 1 行设计，导致 Thread 0 串行循环 5120 次，单次耗时达 0.28 ms，全网 64 层 128 次累积拖慢高达 <strong>~35.8 ms/tok</strong>！
+            </p>
+            <ul class="kernel-points">
+              <li><strong>128 线程 Shared Memory 树状规约</strong>：将 5120 元素划归 128 线程分块规约，消除 Thread 0 串行瓶颈。</li>
+              <li><strong>硬件级 PTX rsqrt 指令</strong>：直接调用 <code>asm("rsqrt.approx.ftz.f32 ...")</code>，单周期内完成倒数平方根。</li>
+              <li><strong>位运算解包 BF16</strong>：利用 <code>bits = uint32(d[i]) &lt;&lt; 16</code> 与 <code>__uint_as_float</code>，彻底规避繁重的类型转换函数。</li>
+            </ul>
+          </div>
+          <pre class="code-block"><code><span class="code-comment">// 源码节选自 src/cuda_native/kernels/common/norm.cu (L50-74)</span>
+<span class="code-type">float</span> partial = <span class="code-num">0.0f</span>;
+<span class="code-keyword">for</span> (<span class="code-type">uint32_t</span> i = tid; i &lt; cols; i += block_size) {
+    <span class="code-keyword">const</span> <span class="code-type">uint32_t</span> bits = <span class="code-keyword">static_cast</span>&lt;<span class="code-type">uint32_t</span>&gt;(d_input[i]) &lt;&lt; <span class="code-num">16</span>;
+    <span class="code-keyword">const</span> <span class="code-type">float</span> x = __uint_as_float(bits);
+    partial = fmaf(x, x, partial);
+}
+__shared__ <span class="code-type">float</span> s_partial[<span class="code-num">128</span>];
+s_partial[tid] = partial;
+__syncthreads();
+<span class="code-keyword">for</span> (<span class="code-type">uint32_t</span> stride = block_size / <span class="code-num">2</span>; stride &gt; <span class="code-num">0</span>; stride &gt;&gt;= <span class="code-num">1</span>) {
+    <span class="code-keyword">if</span> (tid &lt; stride) s_partial[tid] += s_partial[tid + stride];
+    __syncthreads();
+}
+<span class="code-keyword">const</span> <span class="code-type">float</span> mean = s_partial[<span class="code-num">0</span>] / <span class="code-keyword">static_cast</span>&lt;<span class="code-type">float</span>&gt;(cols) + eps;
+<span class="code-type">float</span> inv_rms;
+<span class="code-comment">// 硬件级近似浮点指令，1 个周期完成倒数平方根计算</span>
+asm(<span class="code-var">"rsqrt.approx.ftz.f32 %0, %1;"</span> : <span class="code-var">"=f"</span>(inv_rms) : <span class="code-var">"f"</span>(mean));</code></pre>
+        </div>
+
+        <!-- Tab 4: Split-K Attention -->
+        <div class="tab-pane" id="kernel-tab-3">
+          <div class="kernel-desc-box">
+            <h3 class="kernel-title">
+              mu_splitk_decode_stage1_kernel_d256 & stage2_merge
+              <span class="kernel-badge">5.59x 提速 · 抹平 32K 衰减</span>
+            </h3>
+            <p style="color:var(--text-secondary);font-size:0.92rem;">
+              Qwen3.6-27B 具有超大的头维度 <code>head_dim = 256</code>。在 32K 超长上下文下，传统单 Block 串行规约导致 TPOT 发生雪崩（从 17ms 暴涨至 <strong>486.93 ms/tok</strong>），请求耗时超 4 分钟。
+            </p>
+            <ul class="kernel-points">
+              <li><strong>两阶段并行切片 ($K_{\text{chunk}}=128$)</strong>：Stage 1 发射 256 线程 Block，分块计算局部 $(O_c, m_c, l_c)$。</li>
+              <li><strong>在线 Softmax 跨块融合 (Stage 2)</strong>：利用局部最大值 $m_c$ 原位规约出全局 Softmax 分布，完全抹平长程衰减。</li>
+              <li><strong>容量防护机制</strong>：严格由 <code>kv_cache_capacity</code> 约束切片上界，防止非法越界读取触发 CUDA 700 崩溃。</li>
+            </ul>
+          </div>
+          <pre class="code-block"><code><span class="code-comment">// 源码节选自 src/mu_attn_flashinfer.cu (L1867-1910)</span>
+<span class="code-keyword">const</span> <span class="code-type">uint32_t</span> tid = threadIdx.x; <span class="code-comment">// 0..255 单 Block 完整覆盖 head_dim=256</span>
+<span class="code-keyword">const</span> <span class="code-type">uint32_t</span> chunk_start = chunk * kv_chunk_size;
+<span class="code-keyword">const</span> <span class="code-type">uint32_t</span> chunk_end = min(chunk_start + kv_chunk_size, seq_len);
+
+__shared__ <span class="code-type">float</span> s_q[<span class="code-num">256</span>];
+s_q[tid] = mu_bf16_to_f32(d_q[head * <span class="code-num">256</span> + tid]); <span class="code-comment">// Q 向量装入共享内存</span>
+__syncthreads();
+
+<span class="code-comment">// 跨步累加 QK 点积与分块局部 Online Softmax</span>
+<span class="code-type">float</span> m_prev = -<span class="code-num">1e30f</span>;
+<span class="code-type">float</span> l_prev = <span class="code-num">0.0f</span>;
+<span class="code-comment">// 写入 Stage 1 局部输出：d_partial_o, d_partial_m, d_partial_l</span>
+<span class="code-comment">// 由 Stage 2 Merge Kernel 完成 O(1) 跨块归约</span></code></pre>
+        </div>
+
+        <!-- Tab 5: LM Head -->
+        <div class="tab-pane" id="kernel-tab-4">
+          <div class="kernel-desc-box">
+            <h3 class="kernel-title">
+              TP4 LM Head 列并行切分与 8 字节双字 AllGather
+              <span class="kernel-badge">耗时 5.2ms -> 0.4ms · 兼容 CUDA Graph</span>
+            </h3>
+            <p style="color:var(--text-secondary);font-size:0.92rem;">
+              大模型词表维度高达 <code>152,064</code>。在 TP=4 分布式场景下，若将全量 Logits（$152064 \times 4\text{B} = 608\text{ KB}$）跨卡传输，将产生巨大的 NCCL 通信开销，且无法通过 CUDA Stream Capture 捕获。
+            </p>
+            <ul class="kernel-points">
+              <li><strong>列并行切分加载</strong>：每张 GPU 仅计算 $\frac{152064}{4} = 38,016$ 个 logits 并输出局部 <code>(max_val, local_id + vocab_offset)</code>。</li>
+              <li><strong>8 字节极简通信</strong>：通过 <code>ncclAllGather</code> 仅需通信 2 个 <code>uint32</code>（8 字节），彻底消除 608KB 通信开销。</li>
+              <li><strong>256 线程共享内存 Argmax</strong>：将单线程遍历 152,064 元素的 6.38 ms 耗时直接压降至 <strong>&lt; 0.08 ms</strong>。</li>
+            </ul>
+          </div>
+          <pre class="code-block"><code><span class="code-comment">// 架构逻辑设计 (src/cuda_native/model/qwen36/decode.cpp)</span>
+<span class="code-comment">// Rank 0-3 各自完成本地 38,016 维 GEMM 与并行 Argmax</span>
+mu_argmax_f32&lt;&lt;&lt;<span class="code-num">1</span>, <span class="code-num">256</span>, <span class="code-num">0</span>, ctx.stream&gt;&gt;&gt;(d_logits_shard, <span class="code-num">38016</span>, d_cand_shard);
+
+<span class="code-comment">// 4 卡仅聚合 8 字节结构体：(uint32_t val_bits, uint32_t global_token_id)</span>
+ncclAllGather(d_cand_shard, d_all_cands, <span class="code-num">2</span>, ncclUint32, ctx.nccl_comm, ctx.stream);
+
+<span class="code-comment">// 终极极速选出 Top-1 全局 Token，耗时 0.003 ms，100% 契合 CUDA Graph 捕获</span>
+mu_select_top1_kernel&lt;&lt;&lt;<span class="code-num">1</span>, <span class="code-num">4</span>, <span class="code-num">0</span>, ctx.stream&gt;&gt;&gt;(d_all_cands, d_final_token);</code></pre>
+        </div>
+
+        <!-- Tab 6: 4-in-1 GEMM -->
+        <div class="tab-pane" id="kernel-tab-5">
+          <div class="kernel-desc-box">
+            <h3 class="kernel-title">
+              Stride-Aware 4-in-1 GEMM 跨步感知零拷贝
+              <span class="kernel-badge">消灭 96 次 GEMM · 节省 14.7ms TTFT</span>
+            </h3>
+            <p style="color:var(--text-secondary);font-size:0.92rem;">
+              48 层 DeltaNet 在 Prefill 时需分别计算 <code>in_proj_qkv</code> ($K=5120, N=2560$) 与 <code>in_proj_z</code> ($K=5120, N=1536$)。若独立发射 GEMM，全网产生 96 次调度与 75ms+ 的 Host launch overhead。
+            </p>
+            <ul class="kernel-points">
+              <li><strong>权重维度直接拼接</strong>：将权重在第 0 维拼接为单一 $N=4096$ 的 Block-FP8 GEMM（$32 \times 128$ 严格对齐 Triton 算子块要求）。</li>
+              <li><strong>行交织零内存重排</strong>：输出排布为 $[S, 4096]$（前 2560 元素为 $qkv$，后 1536 元素为 $z$），杜绝中间显存搬运。</li>
+              <li><strong>跨步感知卷积与状态读取</strong>：将 <code>stride=4096</code> 传入因果卷积与分块算子，原地跨步读取，0 显存拷贝、0 精度损失。</li>
+            </ul>
+          </div>
+          <pre class="code-block"><code><span class="code-comment">// 架构逻辑设计 (src/cuda_native/model/qwen36/prefill.cpp)</span>
+<span class="code-comment">// 单次发射 N=4096 Block-FP8 GEMM (融合 in_proj_qkv 与 in_proj_z)</span>
+run_fp8_gemm_scaled_mm(ctx, d_act, d_fused_proj_w, d_fused_out, S, <span class="code-num">5120</span>, <span class="code-num">4096</span>);
+
+<span class="code-comment">// 跨步感知因果卷积：每 Token 步长 4096，就地读取前 2560 元素完成因果卷积</span>
+mu_causal_conv1d_update_stride_kernel&lt;&lt;&lt;grid, block, <span class="code-num">0</span>, ctx.stream&gt;&gt;&gt;(
+    d_fused_out, d_qkv_act, <span class="code-comment">/*in_stride=*/</span><span class="code-num">4096</span>, <span class="code-comment">/*feat_dim=*/</span><span class="code-num">2560</span>, S
+);
+
+<span class="code-comment">// Delta Rule 算子内部按 token_idx * 4096 + 2560 原位读取 z 向量，0 中间缓冲！</span></code></pre>
+        </div>
+      </div>
+
+      <!-- Kernel Micro-benchmark Table -->
+      <h3 style="font-size:1.25rem;font-weight:700;margin-bottom:0.75rem;color:#fff;">
+        核心算子微基准测试与性能收益汇总表 (Micro-Benchmark Matrix)
+      </h3>
+      <div class="table-container">
+        <table class="benchmark-table">
+          <thead>
+            <tr>
+              <th>算子模块</th>
+              <th>优化前基线实现</th>
+              <th>MU25 优化内核 / 机制</th>
+              <th>单次耗时对比</th>
+              <th>全网 64 层累积收益</th>
+              <th>核心优化机理</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>DeltaNet Decode 状态递推</strong></td>
+              <td>128 次标量循环展开，2 读 2 写 DRAM</td>
+              <td><code>mu_gated_deltanet_decode_step_kernel</code></td>
+              <td>22.5 µs &rarr; <span class="cell-highlight">7.7 µs</span></td>
+              <td><strong>-1.40 ms/step</strong></td>
+              <td>128-bit <code>float4</code> 向量化读写，寄存器 <code>r_cache[32]</code> 原地融合更新，0 Spill</td>
+            </tr>
+            <tr>
+              <td><strong>自回归单步 RMSNorm</strong></td>
+              <td>单线程循环 5120 次累加 (PTX旧内核)</td>
+              <td><code>mu_decode_rmsnorm_bf16_kernel</code></td>
+              <td>0.28 ms &rarr; <span class="cell-highlight">1.5 µs</span></td>
+              <td><strong>-35.8 ms/step 🚀</strong></td>
+              <td>128 线程 Shared Memory 树状规约 + 硬件级指令 <code>rsqrt.approx.ftz.f32</code></td>
+            </tr>
+            <tr>
+              <td><strong>跨层残差与输入 Norm</strong></td>
+              <td>残差累加内核与 RMSNorm 独立分开调用</td>
+              <td><code>mu_prefill_fused_add_rmsnorm_bf16_kernel</code></td>
+              <td>2 次独立 Launch & DRAM 往返</td>
+              <td><strong>消灭 128 次 Launch (-786MB)</strong></td>
+              <td>128-bit <code>uint4</code> 向量化加载，双路并行写出残差分支与归一化特征</td>
+            </tr>
+            <tr>
+              <td><strong>Split-K KV Attention (32K)</strong></td>
+              <td>单 Block 串行循环 (head_dim=256)</td>
+              <td><code>mu_splitk_decode_stage1/stage2_d256</code></td>
+              <td>486.9 ms &rarr; <span class="cell-highlight">87.1 ms</span></td>
+              <td><strong>提速 5.59x 🚀</strong></td>
+              <td>$K_{\text{chunk}}=128$ 分块两阶段并行，片上共享内存在线 Softmax 规约</td>
+            </tr>
+            <tr>
+              <td><strong>LM Head & 分布式 Argmax</strong></td>
+              <td>全量 Logits (608KB) 跨卡 AllGather 通信</td>
+              <td>列并行切分 + 8 字节双字 AllGather</td>
+              <td>5.2 ms &rarr; <span class="cell-highlight">0.4 ms</span></td>
+              <td><strong>-4.8 ms/step ⚡️</strong></td>
+              <td>各卡局部规约 38,016 词，通信仅 2 个 uint32，100% 兼容 CUDA Graph</td>
+            </tr>
+            <tr>
+              <td><strong>DeltaNet Prefill 投影</strong></td>
+              <td>in_proj_qkv 与 in_proj_z 独立发射 GEMM</td>
+              <td>4-in-1 GEMM (N=4096) 跨步感知</td>
+              <td>96 次独立 GEMM 调度</td>
+              <td><strong>-14.7 ms TTFT ⚡️</strong></td>
+              <td>权重行拼接，输出行交织排布，因果卷积与 Delta Rule 跨步感知原地读取，0 拷贝</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 4: Technical Breakthroughs -->
+    <section id="breakthroughs">
+      <div class="section-header">
+        <span class="section-tag">Engineering Innovation</span>
+        <h2 class="section-title">五大核心战役与技术攻坚实录</h2>
+        <p class="section-description">
+          从内存壁垒、量化截断到调度气泡，记录我们在突破大模型裸金属极速推理过程中的核心设计决策与避坑指南。
+        </p>
+      </div>
+
+      <div class="breakthrough-grid">
+        <!-- Card 1 -->
+        <div class="breakthrough-card">
+          <div class="breakthrough-icon">⚡️</div>
+          <h3 class="breakthrough-title">1. 原生 C++ 27 层 ViT 与零 Python 跨越</h3>
+          <div class="breakthrough-content">
+            此前引擎依赖 Python 脚本执行 ViT 特征抽取，单次请求引入 <strong>65~80 ms</strong> 的进程间交互与 GIL 开销。<br>
+            <strong>重构</strong>：全流程使用原生 C++ 算子闭环，实现 <code>mu_gpu_bicubic_resize_normalize_patch16_bf16_kernel</code> 双三次插值、Patch Embedding 权重折叠与 <code>libmu_sdpa.so</code> 零拷贝 SDPA。视觉前向发射时间由 80 ms 暴降至 <strong>6.67 ms</strong>（GPU 执行 ~40.9 ms），并在 10-Shot 官方多模态代表集上取得 <strong>10/10 PASS</strong>。
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="breakthrough-card">
+          <div class="breakthrough-icon">🛡️</div>
+          <h3 class="breakthrough-title">2. Precision Guard 分级精度守卫</h3>
+          <div class="breakthrough-content">
+            Ada Lovelace SM 8.9 CUTLASS 仅支持 1D 缩放。若全网开启 W8A8，动态量化截断误差会在浅层（Layer 0~2）迅速发散，导致 Page 8 等敏感用例的 Argmax 翻转发生 9/10 FAIL。<br>
+            <strong>创新</strong>：确立 <code>Precision Guard</code> 策略，对敏感浅层强制保持 BF16 cuBLAS 高精计算，在深层（Layer 3~63）放开原生 W8A8。既稳稳锁定 <strong>10/10 100% Exact Match</strong> 精度门禁，又完整斩获 61 层量化带来的 <strong>77.1 ms</strong> 提速红利。
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="breakthrough-card">
+          <div class="breakthrough-icon">🚀</div>
+          <h3 class="breakthrough-title">3. 128-bit 向量化 DeltaNet 状态寄存器驻留</h3>
+          <div class="breakthrough-content">
+            自回归解码阶段，原始实现对 64KB SSM 状态矩阵频繁进行 DRAM 读写，局部显存 Spill 严重，单步耗时达 22.5 µs。<br>
+            <strong>重构</strong>：在 <code>mu_gated_deltanet_decode_step_kernel</code> 中采用 32 个 <code>float4</code> 将状态在寄存器内完成单次加载，原地完成 <code>v_pred</code> 与 <code>v_err</code> 融合计算后立即写回。寄存器由 255 降至 42，耗时骤降至 <strong>7.7 µs/层 (2.90x 提速)</strong>，推动端到端 TPOT 突破至 <strong>17.61 ms/tok</strong>。
+          </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="breakthrough-card">
+          <div class="breakthrough-icon">🔍</div>
+          <h3 class="breakthrough-title">4. 破除 CPU 假象：Host Launch 100% 隐匿</h3>
+          <div class="breakthrough-content">
+            通过 CUDA Event 高精度打点排查 Prefill 耗时，证实 <code>layers_launch = 91.36 ms</code>，而 GPU 硬件硬件物理执行了 <code>201.94 ms</code>，Host 线程空闲等待 152 ms。<br>
+            <strong>启示</strong>：Host launch overhead 已 <strong>100% 完全被 GPU 执行时间掩盖</strong>。纯 CPU 层面调度已不再是瓶颈，真正的提速必须聚焦在 GPU 物理计算优化（如分块 DeltaNet 零分配、跨层 RMSNorm 融合与视觉缓存）。
+          </div>
+        </div>
+
+        <!-- Card 5 -->
+        <div class="breakthrough-card">
+          <div class="breakthrough-icon">🏆</div>
+          <h3 class="breakthrough-title">5. AIME 2026 4096-Token 满分闭环与提前收敛</h3>
+          <div class="breakthrough-content">
+            针对 AIME 2026 高难度竞赛数学题，统一基准输出上限为 <strong>4096 Tokens</strong>。Problem 4（几何高截弦长）需要 ~2600 步完成 3 套严谨推导并输出 $m+n+p=18$。<br>
+            <strong>胜出</strong>：MU25 率先达成 <strong>5/5 (100.0%) PASS</strong>，且在 P1 (3653步) 与 P2 (3890步) 验证充分后主动输出自然 EOS <code>&lt;|im_end|&gt;</code> 提早完结；而 vLLM 因盲目尝试第二种通解在 4095 步被硬截断判定 FAIL。
+          </div>
+        </div>
+
+        <!-- Card 6 -->
+        <div class="breakthrough-card">
+          <div class="breakthrough-icon">💎</div>
+          <h3 class="breakthrough-title">6. 跨层 MLP 残差与输入 RMSNorm 一体化融合</h3>
+          <div class="breakthrough-content">
+            Transformer 中，第 $l$ 层 MLP 输出残差 $X_l$ 紧接着成为第 $l+1$ 层的输入归一化 $\text{RMSNorm}(X_l)$。原先分开调用产生 128 次独立发射与 786 MB DRAM 往返。<br>
+            <strong>融合</strong>：通过 <code>mu_launch_prefill_fused_add_rmsnorm</code>，单次加载就地更新残差分支并直接输出归一化特征，彻底消除 128 次内核发射与全局显存读写延迟。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: AIME 2026 Case Gallery -->
+    <section id="aime2026">
+      <div class="section-header">
+        <span class="section-tag">Mathematical Reasoning Benchmark</span>
+        <h2 class="section-title">AIME 2026 高难度竞赛数学深度推导案例</h2>
+        <p class="section-description">
+          AIME 官方年度考制共 30 题。当前基准由 5 道高难度代表性考题组成，涵盖代数、数论、组合、几何与离散数学，输出 000–999 的唯一整数答案。
+        </p>
+      </div>
+
+      <div class="aime-grid">
+        <!-- P1 -->
+        <div class="aime-card">
+          <div class="aime-img-wrap">
+            <img src="assets/aime2026/aime_01_monic_quartic.png" alt="AIME Problem 1">
+          </div>
+          <div class="aime-body">
+            <div class="aime-meta">
+              <span class="aime-tag">Problem 1 · 代数与多项式</span>
+              <span class="cell-pass">5/5 PASS</span>
+            </div>
+            <h4 class="aime-title">首一四次多项式余数求解</h4>
+            <div class="aime-details">
+              <strong>期望答案</strong>: <code>24</code> | <strong>MU 答案</strong>: <code>24</code> (自然完结，3653步) | <strong>vLLM</strong>: <code>24</code> (4096步跑满)<br>
+              MU25 端到端耗时 65.28s，相比 vLLM 93.04s <strong>净省 27.76 秒</strong>。
+            </div>
+          </div>
+        </div>
+
+        <!-- P2 -->
+        <div class="aime-card">
+          <div class="aime-img-wrap">
+            <img src="assets/aime2026/aime_02_chinese_remainder.png" alt="AIME Problem 2">
+          </div>
+          <div class="aime-body">
+            <div class="aime-meta">
+              <span class="aime-tag">Problem 2 · 数论与同余方程</span>
+              <span class="cell-pass">MU 独享 PASS</span>
+            </div>
+            <h4 class="aime-title">中国剩余定理同余系求解</h4>
+            <div class="aime-details">
+              <strong>期望答案</strong>: <code>479</code> | <strong>MU 答案</strong>: <code>479</code> (3890步自然收敛)<br>
+              vLLM 执着于尝试第二种通解，在第 4095 步刚刚写出 <code>n = 7429m...</code> 时硬截断未输出盒装答案被判定为 <strong>FAIL</strong>。
+            </div>
+          </div>
+        </div>
+
+        <!-- P3 -->
+        <div class="aime-card">
+          <div class="aime-img-wrap">
+            <img src="assets/aime2026/aime_03_grid_avoidance.png" alt="AIME Problem 3">
+          </div>
+          <div class="aime-body">
+            <div class="aime-meta">
+              <span class="aime-tag">Problem 3 · 组合数学与容斥原理</span>
+              <span class="cell-pass">5/5 PASS</span>
+            </div>
+            <h4 class="aime-title">网格容斥原理路径避让</h4>
+            <div class="aime-details">
+              <strong>期望答案</strong>: <code>300</code> | <strong>MU 答案</strong>: <code>300</code> | <strong>vLLM</strong>: <code>300</code><br>
+              双方均精准建立双禁忌点容斥模型 $N = \text{Total} - |A| - |B| + |A \cap B| = 300$。MU25 耗时 72.9s，领先 vLLM 15.7s。
+            </div>
+          </div>
+        </div>
+
+        <!-- P4 -->
+        <div class="aime-card">
+          <div class="aime-img-wrap">
+            <img src="assets/aime2026/aime_04_incircle_chord.png" alt="AIME Problem 4">
+          </div>
+          <div class="aime-body">
+            <div class="aime-meta">
+              <span class="aime-tag">Problem 4 · 解析几何与弦长</span>
+              <span class="cell-pass">4096 步满分闭环</span>
+            </div>
+            <h4 class="aime-title">三角形内切圆高截弦长 ($m+n+p$)</h4>
+            <div class="aime-details">
+              <strong>期望答案</strong>: <code>18</code> ($m=2, n=1, p=15$)<br>
+              此前在 2048 步两家均在最终求和前刚好耗尽步长。在 4096 步标准下，两家均完成 3 套推导并在第 2600 步输出 <code>\boxed{18}</code>，完美闭环！
+            </div>
+          </div>
+        </div>
+
+        <!-- P5 -->
+        <div class="aime-card">
+          <div class="aime-img-wrap">
+            <img src="assets/aime2026/aime_05_floor_sqrt_sum.png" alt="AIME Problem 5">
+          </div>
+          <div class="aime-body">
+            <div class="aime-meta">
+              <span class="aime-tag">Problem 5 · 离散数学与序列求和</span>
+              <span class="cell-pass">5/5 PASS</span>
+            </div>
+            <h4 class="aime-title">高斯取整分段根号序列和</h4>
+            <div class="aime-details">
+              <strong>期望答案</strong>: <code>625</code> | <strong>MU 答案</strong>: <code>625</code> | <strong>vLLM</strong>: <code>625</code><br>
+              精准分段推导区间跳变点，求和核验一致命中 625。MU25 吞吐保持 56.4 tok/s，每题稳省 20+ 秒。
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 6: Data Tables -->
+    <section id="data-tables">
+      <div class="section-header">
+        <span class="section-tag">Complete Test Data</span>
+        <h2 class="section-title">官方评测集完整对照数据表</h2>
+        <p class="section-description">
+          涵盖 10-Shot 多模态代表集与 AIME 2026 全量逐题测试明细。
+        </p>
+      </div>
+
+      <!-- Table 1: 10-Shot Multimodal -->
+      <h3 style="font-size:1.25rem;font-weight:700;margin-bottom:0.75rem;color:#fff;">
+        表 1: 官方 10-Shot 多模态代表集（512-Token 标准，4× L20 TP4）
+      </h3>
+      <div class="table-container">
+        <table class="benchmark-table">
+          <thead>
+            <tr>
+              <th>Page</th>
+              <th>测试类别 / 图像考点</th>
+              <th>输入 Token</th>
+              <th>输出 (MU/vLLM)</th>
+              <th>相似度</th>
+              <th>判定</th>
+              <th>MU CUDA TTFT</th>
+              <th>vLLM TTFT</th>
+              <th>MU TPOT (吞吐)</th>
+              <th>vLLM TPOT (吞吐)</th>
+              <th>单题总耗时 (MU/vLLM)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>1</strong></td>
+              <td>Financial Multi-Group Bar (财务柱状图)</td>
+              <td>849</td>
+              <td>513 / 512</td>
+              <td>0.963</td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td class="cell-highlight">181.98 ms</td>
+              <td>207.21 ms</td>
+              <td class="cell-highlight">17.61 ms (56.8 t/s)</td>
+              <td>22.65 ms (44.2 t/s)</td>
+              <td><strong>9.21s</strong> / 11.80s (-2.59s)</td>
+            </tr>
+            <tr>
+              <td><strong>2</strong></td>
+              <td>Academic Flowchart Decision (流程图推断)</td>
+              <td>834</td>
+              <td>513 / 512</td>
+              <td>0.966</td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td class="cell-highlight">182.20 ms</td>
+              <td>203.95 ms</td>
+              <td class="cell-highlight">17.61 ms (56.8 t/s)</td>
+              <td>22.61 ms (44.2 t/s)</td>
+              <td><strong>9.21s</strong> / 11.78s (-2.57s)</td>
+            </tr>
+            <tr>
+              <td><strong>3</strong></td>
+              <td>Circuit Logic Schematic (电路逻辑图)</td>
+              <td>859</td>
+              <td>513 / 512</td>
+              <td>0.970</td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td class="cell-highlight">182.72 ms</td>
+              <td>205.81 ms</td>
+              <td class="cell-highlight">17.61 ms (56.8 t/s)</td>
+              <td>22.64 ms (44.2 t/s)</td>
+              <td><strong>9.21s</strong> / 11.79s (-2.58s)</td>
+            </tr>
+            <tr>
+              <td><strong>4</strong></td>
+              <td>Geometric Coordinates (平面几何解析)</td>
+              <td>857</td>
+              <td>513 / 512</td>
+              <td>0.968</td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td class="cell-highlight">182.77 ms</td>
+              <td>205.86 ms</td>
+              <td class="cell-highlight">17.61 ms (56.8 t/s)</td>
+              <td>22.63 ms (44.2 t/s)</td>
+              <td><strong>9.21s</strong> / 11.79s (-2.58s)</td>
+            </tr>
+            <tr>
+              <td><strong>5</strong></td>
+              <td>Mathematical Function Curves (微积分函数)</td>
+              <td>862</td>
+              <td>513 / 512</td>
+              <td>0.967</td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td class="cell-highlight">183.05 ms</td>
+              <td>208.92 ms</td>
+              <td class="cell-highlight">17.61 ms (56.8 t/s)</td>
+              <td>22.62 ms (44.2 t/s)</td>
+              <td><strong>9.22s</strong> / 11.79s (-2.57s)</td>
+            </tr>
+            <tr>
+              <td><strong>6</strong></td>
+              <td>Spatial 3D VQA (三维立体空间推断)</td>
+              <td>844</td>
+              <td>513 / 512</td>
+              <td>0.965</td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td class="cell-highlight">182.43 ms</td>
+              <td>204.60 ms</td>
+              <td class="cell-highlight">17.61 ms (56.8 t/s)</td>
+              <td>22.61 ms (44.2 t/s)</td>
+              <td><strong>9.21s</strong> / 11.78s (-2.57s)</td>
+            </tr>
+            <tr>
+              <td><strong>7</strong></td>
+              <td>Biomedical Anatomy Diagram (解剖学标注)</td>
+              <td>845</td>
+              <td>513 / 512</td>
+              <td>0.965</td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td class="cell-highlight">181.92 ms</td>
+              <td>204.61 ms</td>
+              <td class="cell-highlight">17.63 ms (56.7 t/s)</td>
+              <td>22.63 ms (44.2 t/s)</td>
+              <td><strong>9.22s</strong> / 11.77s (-2.55s)</td>
+            </tr>
+            <tr>
+              <td><strong>8</strong></td>
+              <td>Industrial Process Piping (工业管道图)</td>
+              <td>840</td>
+              <td>487 / 512</td>
+              <td>0.998</td>
+              <td><span class="cell-pass">PASS (自然EOS)</span></td>
+              <td class="cell-highlight">182.78 ms</td>
+              <td>204.38 ms</td>
+              <td class="cell-highlight">17.63 ms (56.7 t/s)</td>
+              <td>22.65 ms (44.2 t/s)</td>
+              <td><strong>8.77s</strong> / 11.80s (-3.03s)</td>
+            </tr>
+            <tr>
+              <td><strong>9</strong></td>
+              <td>Satellite Topology Map (卫星拓扑网络)</td>
+              <td>859</td>
+              <td>459 / 512</td>
+              <td>0.997</td>
+              <td><span class="cell-pass">PASS (自然EOS)</span></td>
+              <td class="cell-highlight">183.18 ms</td>
+              <td>206.18 ms</td>
+              <td class="cell-highlight">17.63 ms (56.7 t/s)</td>
+              <td>22.63 ms (44.2 t/s)</td>
+              <td><strong>8.27s</strong> / 11.79s (-3.52s)</td>
+            </tr>
+            <tr>
+              <td><strong>10</strong></td>
+              <td>Thermal Thermodynamics (热力学循环)</td>
+              <td>855</td>
+              <td>513 / 512</td>
+              <td>0.964</td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td class="cell-highlight">183.17 ms</td>
+              <td>208.97 ms</td>
+              <td class="cell-highlight">17.63 ms (56.7 t/s)</td>
+              <td>22.62 ms (44.2 t/s)</td>
+              <td><strong>9.22s</strong> / 11.79s (-2.57s)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Table 2: AIME 2026 -->
+      <h3 style="font-size:1.25rem;font-weight:700;margin-bottom:0.75rem;margin-top:2rem;color:#fff;">
+        表 2: AIME 2026 高难度竞赛数学逐题对照（4096-Token 标准，4× L20 TP4）
+      </h3>
+      <div class="table-container">
+        <table class="benchmark-table">
+          <thead>
+            <tr>
+              <th>题号</th>
+              <th>考点领域</th>
+              <th>期望答案</th>
+              <th>MU 答案</th>
+              <th>vLLM 答案</th>
+              <th>MU 判定</th>
+              <th>vLLM 判定</th>
+              <th>MU TTFT</th>
+              <th>vLLM TTFT</th>
+              <th>MU TPOT (吞吐)</th>
+              <th>vLLM TPOT (吞吐)</th>
+              <th>端到端总耗时 (MU/vLLM)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>1</strong></td>
+              <td>代数多项式首一余数</td>
+              <td><strong>24</strong></td>
+              <td>24</td>
+              <td>24</td>
+              <td><span class="cell-pass">PASS (自然完结)</span></td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td>499.58 ms</td>
+              <td>225.18 ms</td>
+              <td class="cell-highlight">17.74 ms (56.4 t/s)</td>
+              <td>22.67 ms (44.1 t/s)</td>
+              <td><strong>65.28s</strong> / 93.04s (-27.76s)</td>
+            </tr>
+            <tr>
+              <td><strong>2</strong></td>
+              <td>中国剩余定理同余系</td>
+              <td><strong>479</strong></td>
+              <td>479</td>
+              <td>7429</td>
+              <td><span class="cell-pass">PASS (自然完结)</span></td>
+              <td><span class="cell-fail">FAIL (截断)</span></td>
+              <td>262.47 ms</td>
+              <td>223.79 ms</td>
+              <td class="cell-highlight">17.73 ms (56.4 t/s)</td>
+              <td>22.67 ms (44.1 t/s)</td>
+              <td><strong>69.23s</strong> / 93.03s (-23.80s)</td>
+            </tr>
+            <tr>
+              <td><strong>3</strong></td>
+              <td>网格容斥原理路径避让</td>
+              <td><strong>300</strong></td>
+              <td>300</td>
+              <td>300</td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td>261.69 ms</td>
+              <td>221.49 ms</td>
+              <td class="cell-highlight">17.73 ms (56.4 t/s)</td>
+              <td>22.67 ms (44.1 t/s)</td>
+              <td><strong>72.90s</strong> / 88.60s (-15.70s)</td>
+            </tr>
+            <tr>
+              <td><strong>4</strong></td>
+              <td>三角形内切圆高截弦长</td>
+              <td><strong>18</strong></td>
+              <td>18</td>
+              <td>18</td>
+              <td><span class="cell-pass">PASS (满分闭环)</span></td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td>270.64 ms</td>
+              <td>229.99 ms</td>
+              <td class="cell-highlight">17.73 ms (56.4 t/s)</td>
+              <td>22.65 ms (44.2 t/s)</td>
+              <td><strong>72.91s</strong> / 92.97s (-20.06s)</td>
+            </tr>
+            <tr>
+              <td><strong>5</strong></td>
+              <td>高斯取整分段根号和</td>
+              <td><strong>625</strong></td>
+              <td>625</td>
+              <td>625</td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td><span class="cell-pass">PASS</span></td>
+              <td>258.08 ms</td>
+              <td>217.44 ms</td>
+              <td class="cell-highlight">17.73 ms (56.4 t/s)</td>
+              <td>22.66 ms (44.1 t/s)</td>
+              <td><strong>72.89s</strong> / 93.00s (-20.11s)</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Section 7: Future Horizons -->
+    <section id="future">
+      <div class="section-header">
+        <span class="section-tag">Next Steps & Horizons</span>
+        <h2 class="section-title">未来演进与可选探索方向</h2>
+        <p class="section-description">
+          当前针对 Qwen3.6-27B-FP8 在 L20 上的首字时延与吞吐量超越工作已全部达成。后续可探索的进阶方向已同步记录至仓库 <code>TODO.md</code>：
+        </p>
+      </div>
+
+      <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+        <div class="stat-card">
+          <div class="stat-label">方向 1 · 学术竞赛验证</div>
+          <h4 style="font-size:1.15rem;font-weight:700;margin:0.5rem 0;color:#fff;">全量 30 题 AIME 深度评测</h4>
+          <p style="font-size:0.85rem;color:var(--text-secondary);">
+            将核心代表集扩充为 MAA 官方 AIME I + II 全量 30 题库，进行 ~82 分钟长推导双引擎深度评测与学术级榜单对齐。
+          </p>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">方向 2 · 极致时延冲击</div>
+          <h4 style="font-size:1.15rem;font-weight:700;margin:0.5rem 0;color:#fff;">P3.2 跨层通算重叠与图录制</h4>
+          <p style="font-size:0.85rem;color:var(--text-secondary);">
+            探索 Prefill CUDA Graph 消除 Host launch 开销，将上一层 MLP Down AllReduce 与下一层 DeltaNet GEMM 跨层重叠，冲击 &lt; 160 ms TTFT。
+          </p>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">方向 3 · 生产商业服务化</div>
+          <h4 style="font-size:1.15rem;font-weight:700;margin:0.5rem 0;color:#fff;">Continuous Dynamic Batching</h4>
+          <p style="font-size:0.85rem;color:var(--text-secondary);">
+            引入分页物理内存池（PagedAttention）与连续动态批处理调度器，在保持单请求极低时延的同时支撑高并发高 QPS 吞吐。
+          </p>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-label">方向 4 · 跨芯片架构移植</div>
+          <h4 style="font-size:1.15rem;font-weight:700;margin:0.5rem 0;color:#fff;">Hopper (SM90) & Blackwell</h4>
+          <p style="font-size:0.85rem;color:var(--text-secondary);">
+            利用 SM90 TMA 与 SM100 NVLink 拓扑，移植已验证的混合架构算子库与 Precision Guard 策略，释放更大算力潜能。
+          </p>
+        </div>
+      </div>
+
+      <div style="margin-top:2rem;">
+        <h3 style="font-size:1.2rem;font-weight:700;color:#fff;margin-bottom:0.75rem;">复现评测运行命令</h3>
+        <pre class="code-block"><code># 1. 官方 10-Shot 多模态基准评测 (512-Token 标准)
+tools/remote_l20_benchmark.sh --precision -t 512 -g 3 -s \
+  --fair-ttft --fast-vision --fast-preprocess --fast-vit-sdpa --vision-cache
+
+# 2. AIME 2026 高难度数学竞赛基准评测 (4096-Token 标准)
+tools/remote_l20_benchmark.sh --benchmark aime2026 --precision -t 4096 -g 3 -s \
+  --fair-ttft --fast-vision --fast-preprocess --fast-vit-sdpa --vision-cache --warmups 0</code></pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="footer-links">
+      <a href="../">TokenResearch 首页</a>
+      <a href="../hardware/3-mu25-L20-多模态专属裸机引擎实战.md">裸机实战专题</a>
+      <a href="https://github.com/wilhelmjung/mu25" target="_blank">mu25 GitHub 仓库</a>
+      <a href="https://github.com/wilhelmjung/mu25/blob/main/handoff.md" target="_blank">交接文档 (handoff.md)</a>
+      <a href="https://github.com/wilhelmjung/mu25/blob/main/AGENTS.md" target="_blank">避坑指南 (Gotchas 38)</a>
+      <a href="https://github.com/wilhelmjung/mu25/blob/main/TODO.md" target="_blank">待办事项 (TODO.md)</a>
+    </div>
+    <p>© 2026 MU25 Team &amp; TokenResearch. Built with pure CUDA-Native C++ for ultra-low-latency multimodal inference.</p>
+  </footer>
+
+  <!-- Interactive Scripts & Chart.js -->
+  <script>
+    function switchKernelTab(index) {
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      const tabPanes = document.querySelectorAll('.tab-pane');
+      tabBtns.forEach((btn, i) => {
+        if (i === index) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+      tabPanes.forEach((pane, i) => {
+        if (i === index) {
+          pane.classList.add('active');
+        } else {
+          pane.classList.remove('active');
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      const textColor = '#94a3b8';
+      const gridColor = 'rgba(255, 255, 255, 0.06)';
+
+      // 1. TTFT Milestone Waterfall
+      new Chart(document.getElementById('ttftMilestoneChart'), {
+        type: 'bar',
+        data: {
+          labels: ['初始全Fallback', 'C++ ViT', 'W8A8守卫', 'Chunk Delta', 'MU25(最终)', 'vLLM TP4基线'],
+          datasets: [{
+            label: 'TTFT (ms)',
+            data: [556.6, 268.2, 246.6, 222.7, 181.9, 206.1],
+            backgroundColor: [
+              'rgba(148, 163, 184, 0.4)',
+              'rgba(59, 130, 246, 0.5)',
+              'rgba(59, 130, 246, 0.7)',
+              'rgba(16, 185, 129, 0.7)',
+              'rgba(16, 185, 129, 0.95)',
+              'rgba(239, 68, 68, 0.65)'
+            ],
+            borderColor: [
+              '#94a3b8',
+              '#3b82f6',
+              '#3b82f6',
+              '#10b981',
+              '#10b981',
+              '#ef4444'
+            ],
+            borderWidth: 1.5,
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (c) => ` ${c.parsed.y} ms`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: textColor, font: { size: 11 } }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: { color: textColor },
+              title: { display: true, text: '时延 (ms)', color: textColor }
+            }
+          }
+        }
+      });
+
+      // 2. Throughput Chart
+      new Chart(document.getElementById('tpsChart'), {
+        type: 'bar',
+        data: {
+          labels: ['512-Token 多模态解码', '4096-Token AIME竞赛解码'],
+          datasets: [
+            {
+              label: 'MU25 CUDA-Native',
+              data: [56.78, 56.39],
+              backgroundColor: 'rgba(16, 185, 129, 0.85)',
+              borderColor: '#10b981',
+              borderWidth: 1.5,
+              borderRadius: 6
+            },
+            {
+              label: 'vLLM TP4 基线',
+              data: [44.20, 44.13],
+              backgroundColor: 'rgba(239, 68, 68, 0.65)',
+              borderColor: '#ef4444',
+              borderWidth: 1.5,
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#e2e8f0', font: { size: 12 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: (c) => ` ${c.dataset.label}: ${c.parsed.y} tokens/s`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: textColor }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: { color: textColor },
+              title: { display: true, text: '吞吐 (tokens/s)', color: textColor },
+              min: 30
+            }
+          }
+        }
+      });
+
+      // 3. AIME Latency Comparison
+      new Chart(document.getElementById('aimeLatencyChart'), {
+        type: 'bar',
+        data: {
+          labels: ['P1 代数余数', 'P2 数论同余', 'P3 网格路径', 'P4 几何弦长', 'P5 高斯取整', '5题总耗时(÷5)'],
+          datasets: [
+            {
+              label: 'MU25 (秒)',
+              data: [65.28, 69.23, 72.90, 72.91, 72.89, 70.64],
+              backgroundColor: 'rgba(59, 130, 246, 0.85)',
+              borderColor: '#3b82f6',
+              borderWidth: 1.5,
+              borderRadius: 6
+            },
+            {
+              label: 'vLLM (秒)',
+              data: [93.04, 93.03, 88.60, 92.97, 93.00, 92.13],
+              backgroundColor: 'rgba(148, 163, 184, 0.4)',
+              borderColor: '#94a3b8',
+              borderWidth: 1.5,
+              borderRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#e2e8f0', font: { size: 12 } }
+            },
+            tooltip: {
+              callbacks: {
+                label: (c) => ` ${c.dataset.label}: ${c.parsed.y} 秒`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: textColor }
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: { color: textColor },
+              title: { display: true, text: '生成耗时 (秒)', color: textColor }
+            }
+          }
+        }
+      });
+
+      // 4. Prefill Breakdown Doughnut
+      new Chart(document.getElementById('prefillBreakdownChart'), {
+        type: 'doughnut',
+        data: {
+          labels: [
+            '48 层 DeltaNet 计算 (138.4 ms)',
+            '16 层 Full Attention 计算 (42.4 ms)',
+            'Vision Tower 视觉前向 (40.9 ms)',
+            'LM Head + Argmax 通信 (0.96 ms)'
+          ],
+          datasets: [{
+            data: [138.39, 42.44, 40.90, 0.96],
+            backgroundColor: [
+              '#10b981',
+              '#8b5cf6',
+              '#3b82f6',
+              '#f59e0b'
+            ],
+            borderColor: '#12151c',
+            borderWidth: 3
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: { color: '#e2e8f0', font: { size: 11 }, padding: 12 }
+            },
+            tooltip: {
+              callbacks: {
+                label: (c) => ` ${c.label}: ${c.parsed} ms (${((c.parsed/222.69)*100).toFixed(1)}%)`
+              }
+            }
+          }
+        }
+      });
+    });
+  </script>
+
+  <!-- Lightbox Modal for High-Res Diagrams -->
+  <div id="lightboxModal" class="img-lightbox-modal" onclick="closeLightbox()">
+    <span class="img-lightbox-close">&times;</span>
+    <img id="lightboxImg" class="img-lightbox-content" src="" alt="High-Res Architecture Diagram" onclick="event.stopPropagation()">
+  </div>
+
+  <script>
+    function openLightbox(src) {
+      const modal = document.getElementById('lightboxModal');
+      const img = document.getElementById('lightboxImg');
+      img.src = src;
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      const modal = document.getElementById('lightboxModal');
+      modal.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeLightbox();
+    });
+  </script>
+
+</body>
+</html>

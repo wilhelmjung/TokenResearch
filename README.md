@@ -27,11 +27,15 @@ TokenResearch/
 │   ├── 9-月之暗面-Kimi-K3-2.8T超大规模MoE与KDA架构.md # 月之暗面 2.8T MoE 与 KDA/Mooncake 架构专题
 │   └── 10-IQ2-IQ4非线性格点与重要性矩阵混合量化技术.md # IQ2/IQ4 非线性格点与 I-Matrix 混合量化专题
 │
+├── blog/                        # 🔥 交互式博客与前沿极限优化战报
+│   ├── index.html                            # Qwen3.6-27B-FP8 在 MU25 裸机引擎上的极限优化全景战报
+│   └── assets/                               # 性能图表、架构对比 SVG/PNG、AIME 2026 题目截图
+│
 ├── hardware/                    # 🚀 算力硬件、自研 ASIC 与 UMA 算子优化专题
 │   ├── README.md                             # 算力硬件目录索引与芯片选型速查
 │   ├── 1-GB10-UMA-OperatorOptimization.md   # NVIDIA GB10 (Grace Blackwell) 算子级深度优化
 │   ├── 2-OpenAI墨西哥辣椒自研芯片.md         # OpenAI Jalapeño 芯片与 InferenceX 实测（104x能效）
-│   ├── 3-mu25-L20-多模态专属裸机引擎实战.md # mu25 纯 C++/CUDA 裸机引擎在 L20/GB10 上的实测突破
+│   ├── 3-mu25-L20-多模态专属裸机引擎实战.md # mu25 纯 C++/CUDA 裸机引擎在 L20/GB10 上的实测突破与 Qwen3.6 全景超越
 │   └── 4-Apple-MacStudio-M5-M6-Ultra-UMA.md  # Apple Mac Studio (512GB UMA) 桌面千亿模型常驻
 │
 ├── InferenceBenchmarkSystem/    # 🎯 大模型推理 Benchmark 体系（MLPerf + EvalScope 精度与性能双闭环）
@@ -69,4 +73,4 @@ TokenResearch/
    * **AM 分离（空间维 / JANUS）**：Attention 与 MoE 专家池独立弹性扩缩容，彻底消除“资源搁浅”，综合硬件利用率突破 **85%+**。
 4. **算法与裸机引擎突破**：
    * **DFlash 块扩散并行投机采样**：突破自回归瓶颈，实现 **5–6x 无损加速**（接受率 > 89%）；
-   * **mu25 专属裸机引擎**：在 NVIDIA L20 与 GB10 上相比通用 vLLM，首字延迟 (TTFT) 缩短 **19.8%–20.9%**，生成延迟 (TPOT) 缩短 **27.3%**，零显存泄漏。
+   * **mu25 专属裸机引擎（Qwen3.6-27B-FP8 最新突破）**：在 4× NVIDIA L20 TP4 上首字延迟 (TTFT) 压至 **181.92 ms**（领先 vLLM 10.3%），生成速度 **56.8 tok/s**（领先 28.5%），AIME 2026 竞赛数学 **5/5 满分闭环**！详见 [**交互式 Web 战报**](blog/index.html)。

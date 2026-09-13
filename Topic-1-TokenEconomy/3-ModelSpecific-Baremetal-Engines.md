@@ -129,14 +129,23 @@ $$\text{净收益 (Net ROI)} = (\text{通用引擎单月算力 TCO} - \text{专�
 3. **开源生态的自我进化（vLLM V1 & FlashInfer）**：
    * vLLM 在 V1 重构中大面积剔除早期 Python 动态机制，核心调度器与内核全面向 C++ 与静态编译收敛；
    * FlashInfer 等专用组件库通过 C++ 模板在编译期特化注意力计算，为特定模型生成最优汇编。
-4. **🔥 生产级标杆案例：`mu25` 项目（MinerU2.5-Pro / Qwen2-VL on NVIDIA L20 & GB10）**：
-   * **定位与场景**：针对高频生产级文档多模态解析任务（MinerU2.5-Pro / Qwen2-VL 1.2B Vision Stack）在 **NVIDIA L20 (48GB)** 与 **GB10 (128GB UMA)** 硬件上的纯 C++/CUDA 裸机推理引擎。
-   * **底层实现**：采用 CUDA Driver API + cuBLAS 原生直连，实现 `--fast-vision --fast-preprocess --fast-vit-sdpa` 极致算子融合与无动态内存分配的 KV-cache 解码循环，达成 100/100 连续请求零显存增长。
-   * **实测对比（vs 生产级 vLLM 9015 服务）**：
-     * **L20 上**：CUDA TTFT 快 **19.8%**（`209.36 ms` vs `261.10 ms`），Decode TPOT 快 **27.3%**（`2.302 ms/tok` vs `3.166 ms/tok`），`exact_match_rate = 1.0` (10/10 完全无损)；
-     * **GB10 UMA 上**：同样取得 **TTFT 降低 20.9%、TPOT 降低 27.2%、并发 Batch 并行能力翻倍** 的高度一致收益，且彻底清零了 Host-Device 内存冗余序列化开销。
-   * **经济学启示**：`mu25` 在实战中以扎实的数据证明——在**固定业务负载与固定硬件**上，自研 C++/CUDA 裸机专用引擎相比业界最成熟的通用引擎（vLLM），能直接将**单卡有效 Token 吞吐提升 27% 以上，首字延迟缩短 20%，单位 Token 生产成本显著压低**。
-   * 详见独立实战专题：[hardware/3-mu25-L20-多模态专属裸机引擎实战.md](file:///Users/will/github/TokenResearch/hardware/3-mu25-L20-%E5%A4%9A%E6%A8%A1%E6%80%81%E4%B8%93%E5%B1%9E%E8%A3%B8%E6%9C%BA%E5%BC%95%E6%93%8E%E5%AE%9E%E6%88%98.md)。
+4. **🔥 生产级标杆案例：`mu25` 项目（MinerU2.5-Pro & Qwen3.6-27B-FP8 on NVIDIA L20 & GB10）**：
+   * **定位与场景**：针对高频生产级文档多模态解析（MinerU2.5-Pro）以及最新前沿 **Qwen3.6-27B-FP8（48 DeltaNet + 16 Full Attention + 27层 ViT 混合架构）** 在 **4× NVIDIA L20 (48GB TP=4)** 与 **GB10 (128GB UMA)** 硬件上的纯 C++/CUDA 裸机推理引擎。
+   * **底层实现与内核突破**：
+     * 原生 C++ 27 层 ViT 消除 Python 视觉特征倒手（视觉前向仅 6.67 ms）；
+     * Precision Guard 分级精度守卫（Layer 0~2 高精反量化，Layer 3~63 原生 W8A8 Block FP8 GEMM）；
+     * DeltaNet 128-bit `float4` 向量化与状态寄存器驻留（单层 7.7 µs）；
+     * Fused SwiGLU FP8 Direct Bypass 与跨层残差 RMSNorm 融合（消除 128 次内核发射与 786MB DRAM 往返）；
+     * Split-K KV Cache 两阶段规约（32K context TPOT 提速 5.59x）。
+   * **最新实测对标（Qwen3.6-27B-FP8 on 4× L20 TP4 vs 官方 vLLM 基线）**：
+     * **首字延迟 (CUDA TTFT Mean)**：压至 **`181.92 ms`**，较官方 vLLM TP4（`202.76 ms`）**领先 20.84 ms (-10.3%)**！
+     * **自回归解码 (TPOT)**：稳定在 **`17.61 ms/tok` (56.8 tok/s)**，较 vLLM TP4（`22.62 ms/tok`, 44.1 tok/s）**净提升 +28.5%**！
+     * **AIME 2026 竞赛数学 (4096-Token Long-CoT)**：达成 **5/5 (100.0%) PASS 满分闭环**（vLLM 为 4/5），且端到端节省 107.4 秒。
+     * **精度门禁**：官方 10-Shot 多模态达成 **10/10 100% Exact Match**，零显存泄漏。
+   * **经济学启示**：`mu25` 在实战中以扎实的数据证明——在**固定业务负载与固定硬件**上，自研 C++/CUDA 裸机专用引擎相比业界最成熟的通用引擎（vLLM），能直接将**单卡有效 Token 吞吐提升 28.5% 以上，首字延迟缩短 10%~20%，单位 Token 生产成本显著压低**。
+   * 详见独立实战专题与交互式战报：
+     * 📑 [hardware/3-mu25-L20-多模态专属裸机引擎实战.md](file:///Users/will/github/TokenResearch/hardware/3-mu25-L20-%E5%A4%9A%E6%A8%A1%E6%80%81%E4%B8%93%E5%B1%9E%E8%A3%B8%E6%9C%BA%E5%BC%95%E6%93%8E%E5%AE%9E%E6%88%98.md)
+     * 🔥 [**MU25 Qwen3.6-27B-FP8 极限优化交互式 Web 全景战报**](file:///Users/will/github/TokenResearch/blog/index.html)
 
 ---
 

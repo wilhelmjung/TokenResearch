@@ -751,12 +751,13 @@ $$c_t^{KV} = W^{DKV} h_t \quad (d_c = 512)$$
   2. **静态单块显存预分配**：编译期固定所有超参数与中间 Buffer，消除显存碎片，**并发 Batch Size 提升 20%–30%**；
   3. **跨算子超级大融合（Super-Fused Kernels）**：Norm $\to$ MLA 投影 $\to$ MoE 路由 $\to$ GEMM 拘留在片上寄存器完成，彻底阻断中间张量向全局 DRAM 的溢出；
   4. **100% 榨干芯片微架构**：硬编码手工编排 Warp 访存合并（H20 带宽利用率 > 95%）或直接内嵌 TMA 描述符（GB10）。
-- **实测标杆（mu25 项目）**：在 NVIDIA L20 与 GB10 (128GB UMA) 上运行 MinerU2.5-Pro / Qwen2-VL 视觉栈，纯 C++/CUDA 裸机引擎相比生产级 vLLM，**首字延迟（TTFT）降低 19.8%–20.9%，逐词延迟（TPOT）降低 27.2%–27.3%，端到端耗时降低 17.0%，且实现 100 次连续请求零显存泄漏与 UMA 零拷贝零传输等待**。
+- **实测标杆（mu25 项目）**：在 NVIDIA L20 与 GB10 上运行 MinerU2.5-Pro 与最新前沿 **Qwen3.6-27B-FP8（4× L20 TP4）**，纯 C++/CUDA 裸机引擎相比生产级 vLLM，**首字延迟（TTFT）降低 10.3%–20.9%（压至 181.92 ms），自回归解码速率（TPS）提升 +28.5%（达到 56.8 tok/s），AIME 2026 竞赛数学率先达成 5/5 100% 满分闭环，且实现 100% 精度无损与零显存泄漏**。
 - **经济学边界**：适合**超大规模主力模型（集群 > 1,000 GPU，月 Token > 1,000 亿）**、**高频固定业务流（如文档解析）**与**固定端侧硬件（如 GB10 128G UMA）**，能在通用引擎基础上**再降 30%–60% 成本**。
 
 > 📄 **完整专题技术报告**：
 > - 理论篇：[3-ModelSpecific-Baremetal-Engines.md](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/3-ModelSpecific-Baremetal-Engines.md)
 > - 实战案例篇：[hardware/3-mu25-L20-多模态专属裸机引擎实战.md](file:///Users/will/github/TokenResearch/hardware/3-mu25-L20-%E5%A4%9A%E6%A8%A1%E6%80%81%E4%B8%93%E5%B1%9E%E8%A3%B8%E6%9C%BA%E5%BC%95%E6%93%8E%E5%AE%9E%E6%88%98.md)
+> - 🔥 交互式全景战报：[MU25 Qwen3.6-27B-FP8 极限优化战报](file:///Users/will/github/TokenResearch/blog/index.html)
 
 ---
 

@@ -65,6 +65,9 @@
         <a href="../" class="px-3 py-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:opacity-80 transition text-sm font-semibold">
           🏠 首页
         </a>
+        <a href="../blog/" class="px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition text-sm font-bold">
+          🔥 MU25 战报
+        </a>
         <button onclick="toggleDarkMode()" class="p-2 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:opacity-80 transition text-sm">
           🌓 切换主题
         </button>
@@ -357,12 +360,22 @@
           </div>
 
           <!-- Baremetal mu25 -->
-          <div class="border border-slate-200 dark:border-slate-800 rounded-2xl p-6 bg-slate-50/50 dark:bg-slate-900/50">
-            <h3 class="text-xl font-bold text-emerald-600 dark:text-emerald-400 mb-3">🔬 微架构：专用纯 C/CUDA 裸机引擎 (mu25 范式)</h3>
+          <div class="border border-emerald-500/30 rounded-2xl p-6 bg-emerald-50/40 dark:bg-emerald-950/20">
+            <div class="flex items-center justify-between mb-2">
+              <h3 class="text-xl font-bold text-emerald-600 dark:text-emerald-400">🔬 微架构：专用纯 C/CUDA 裸机引擎 (mu25 范式)</h3>
+              <span class="rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 text-xs font-bold px-2.5 py-0.5">Qwen3.6 突破</span>
+            </div>
             <ul class="text-sm space-y-2 text-slate-600 dark:text-slate-400">
-              <li>• <strong>突破</strong>：彻底消除 Python 框架税、GIL 锁与动态内存分配，实现编译期超级大融合。</li>
-              <li>• <strong>实测</strong>：L20 / GB10 上 <strong>TTFT 缩短 20.9%，TPOT 缩短 27.3%，零显存泄漏</strong>。</li>
+              <li>• <strong>突破</strong>：彻底消除 Python 框架税、GIL 锁与动态内存分配，实现原生 C++ 27层 ViT 与算子编译期大融合。</li>
+              <li>• <strong>Qwen3.6-27B-FP8 实测 (4× L20 TP4)</strong>：CUDA TTFT 压至 <strong>181.92 ms</strong>（超 vLLM 10.3%），解码速率 <strong>56.8 tok/s</strong>（领先 +28.5%），AIME 2026 <strong>5/5 满分闭环</strong>。</li>
+              <li>• <strong>GB10 UMA 跨架构表现</strong>：零拷贝统一寻址消除搬运税，TTFT 降低 20.9%，TPOT 降低 27.2%，零显存泄漏。</li>
             </ul>
+            <div class="mt-4 pt-3 border-t border-emerald-200 dark:border-emerald-800/40 flex items-center justify-between">
+              <span class="text-xs text-slate-500 dark:text-slate-400">DeltaNet 128-bit 向量化 · SwiGLU FP8 bypass · Split-K</span>
+              <a href="../blog/" class="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-500 dark:text-emerald-400">
+                查看交互式全景战报 →
+              </a>
+            </div>
           </div>
 
           <!-- Heterogeneous Scheduling Card -->

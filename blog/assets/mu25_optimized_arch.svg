@@ -1,0 +1,388 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 920" width="100%" height="auto" style="display:block;margin:0 auto;background:#ffffff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <defs>
+    <!-- Markers -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#222222" />
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#0084d1" />
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#059669" />
+    </marker>
+  </defs>
+
+  <!-- Pure White Canvas Background -->
+  <rect x="0" y="0" width="960" height="920" fill="#ffffff"/>
+
+  <!-- ================= TOP MAIN TITLE ================= -->
+  <g transform="translate(320, 42)" text-anchor="middle">
+    <text x="0" y="0" fill="#0084d1" font-size="32" font-weight="800" letter-spacing="-0.5">Qwen3.6 (27B)</text>
+    <text x="0" y="22" fill="#059669" font-size="13" font-weight="700">MU25 CUDA-Native 极限融合架构 (Bare-Metal Pipeline)</text>
+  </g>
+
+  <!-- Vocabulary size callout -->
+  <g transform="translate(480, 80)">
+    <text x="0" y="0" fill="#222222" font-size="14" font-weight="700">Vocabulary size of <tspan fill="#0084d1" font-weight="800">152k</tspan></text>
+    <text x="0" y="15" fill="#059669" font-size="10.5" font-weight="700">(TP=4 列并行切分 | 8-Byte AllGather)</text>
+    <path d="M -10 5 L -85 35" fill="none" stroke="#222222" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- ================= LEFT COLUMN: MAIN BACKBONE ================= -->
+  
+  <!-- Outer Gray Container -->
+  <rect x="135" y="115" width="370" height="745" rx="26" fill="#d9d9d9" stroke="#222222" stroke-width="2"/>
+
+  <!-- Linear output layer (LM Head) -->
+  <g transform="translate(255, 140)">
+    <rect x="0" y="0" width="160" height="34" rx="8" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+    <text x="80" y="16" fill="#111111" font-size="11.5" font-weight="600" text-anchor="middle">Linear output layer</text>
+    <text x="80" y="28" fill="#059669" font-size="8.5" font-weight="700" text-anchor="middle">[TP4 LM Head: 0.4ms]</text>
+  </g>
+
+  <line x1="335" y1="125" x2="335" y2="90" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <line x1="335" y1="200" x2="335" y2="177" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Final RMSNorm -->
+  <g transform="translate(255, 200)">
+    <rect x="0" y="0" width="160" height="30" rx="8" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+    <text x="80" y="19" fill="#111111" font-size="11.5" font-weight="600" text-anchor="middle">Final RMSNorm</text>
+  </g>
+
+  <line x1="335" y1="250" x2="335" y2="233" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- 64x Layers Container (Sky Blue) -->
+  <g transform="translate(190, 250)">
+    <rect x="0" y="0" width="260" height="480" rx="22" fill="#72aef5" stroke="#222222" stroke-width="2"/>
+
+    <!-- Residual loop 2 (top) -->
+    <path d="M 145 180 C 230 180, 230 40, 155 40" fill="none" stroke="#222222" stroke-width="1.5"/>
+
+    <!-- Add (+) Circle 2 (Cross-layer Norm fusion) -->
+    <circle cx="145" cy="40" r="13" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+    <text x="145" y="45" fill="#111111" font-size="16" font-weight="700" text-anchor="middle">+</text>
+
+    <!-- Fused Badge -->
+    <rect x="6" y="10" width="112" height="18" rx="4" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+    <text x="62" y="22" fill="#065f46" font-size="8" font-weight="800" text-anchor="middle">Cross-Layer Norm Fusion</text>
+
+    <line x1="145" y1="100" x2="145" y2="56" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <!-- FFN (SwiGLU) -->
+    <g transform="translate(65, 100)">
+      <rect x="0" y="0" width="160" height="34" rx="8" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+      <text x="80" y="16" fill="#111111" font-size="12" font-weight="700" text-anchor="middle">FFN (SwiGLU)</text>
+      <text x="80" y="28" fill="#0284c7" font-size="8.5" font-weight="700" text-anchor="middle">Gate/Up Alias (-11.4GB) | W8A8</text>
+    </g>
+
+    <line x1="145" y1="175" x2="145" y2="137" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <!-- RMSNorm 2 -->
+    <g transform="translate(65, 175)">
+      <rect x="0" y="0" width="160" height="30" rx="8" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+      <text x="80" y="19" fill="#111111" font-size="11.5" font-weight="600" text-anchor="middle">RMSNorm 2</text>
+    </g>
+
+    <line x1="145" y1="240" x2="145" y2="208" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <!-- Add (+) Circle 1 -->
+    <circle cx="145" cy="248" r="13" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+    <text x="145" y="253" fill="#111111" font-size="16" font-weight="700" text-anchor="middle">+</text>
+
+    <!-- Residual loop 1 (bottom) -->
+    <path d="M 145 340 C 230 340, 230 248, 160 248" fill="none" stroke="#222222" stroke-width="1.5"/>
+
+    <line x1="145" y1="305" x2="145" y2="263" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <!-- Gated DeltaNet or Gated Attention (Charcoal Box) -->
+    <g transform="translate(45, 305)">
+      <rect x="0" y="0" width="200" height="54" rx="10" fill="#4d4d4d" stroke="#222222" stroke-width="1.5"/>
+      <text x="100" y="22" fill="#ffffff" font-size="12.5" font-weight="700" text-anchor="middle">Gated DeltaNet or</text>
+      <text x="100" y="38" fill="#ffffff" font-size="12.5" font-weight="700" text-anchor="middle">Gated Attention</text>
+      <text x="100" y="49" fill="#a7f3d0" font-size="8" font-weight="700" text-anchor="middle">[48L DeltaNet / 16L Full Attn]</text>
+    </g>
+
+    <line x1="145" y1="415" x2="145" y2="362" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <!-- RMSNorm 1 -->
+    <g transform="translate(65, 415)">
+      <rect x="0" y="0" width="160" height="30" rx="8" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+      <text x="80" y="19" fill="#111111" font-size="11.5" font-weight="600" text-anchor="middle">RMSNorm 1</text>
+    </g>
+  </g>
+
+  <!-- Left Callouts & Brackets for 64x -->
+  <!-- Curly Brace for 64x -->
+  <g transform="translate(160, 480)">
+    <text x="0" y="0" fill="#0084d1" font-size="20" font-weight="800" text-anchor="end">64 ×</text>
+    <text x="0" y="16" fill="#222222" font-size="13" font-weight="700" text-anchor="end">Layers</text>
+    <path d="M 10 -80 C 18 -40, 18 -10, 25 0 C 18 10, 18 40, 10 80" fill="none" stroke="#222222" stroke-width="2"/>
+  </g>
+
+  <!-- Context Length Callout -->
+  <g transform="translate(25, 620)">
+    <text x="0" y="0" fill="#222222" font-size="13" font-weight="700">Supported</text>
+    <text x="0" y="15" fill="#222222" font-size="13" font-weight="700">context length</text>
+    <text x="0" y="30" fill="#222222" font-size="13" font-weight="700">of <tspan fill="#0084d1" font-weight="800">262k</tspan> tokens</text>
+    <text x="0" y="44" fill="#666666" font-size="10.5" font-weight="600">(extensible up</text>
+    <text x="0" y="56" fill="#666666" font-size="10.5" font-weight="600">to 1M)</text>
+    <path d="M 80 15 L 115 -35" fill="none" stroke="#222222" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- Partial RoPE Callout Box -->
+  <g transform="translate(85, 525)">
+    <rect x="0" y="0" width="100" height="34" rx="8" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+    <text x="50" y="14" fill="#222222" font-size="9.5" font-weight="600" text-anchor="middle">Partial RoPE</text>
+    <text x="50" y="26" fill="#666666" font-size="8.5" text-anchor="middle">(only in attention)</text>
+    <line x1="100" y1="17" x2="135" y2="17" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+  </g>
+
+  <line x1="335" y1="770" x2="335" y2="733" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Token embedding layer (Fused with Layer 0 RMSNorm) -->
+  <g transform="translate(235, 765)">
+    <rect x="0" y="0" width="200" height="36" rx="8" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+    <text x="100" y="17" fill="#111111" font-size="11.5" font-weight="700" text-anchor="middle">Token embedding layer</text>
+    <text x="100" y="29" fill="#059669" font-size="8.5" font-weight="800" text-anchor="middle">[Fused In-GPU Direct Lookup]</text>
+  </g>
+
+  <!-- Embedding size callout -->
+  <g transform="translate(60, 840)">
+    <text x="0" y="0" fill="#222222" font-size="13" font-weight="700">Embedding size of</text>
+    <text x="0" y="16" fill="#0084d1" font-size="14" font-weight="800">5120</text>
+    <path d="M 115 -5 L 155 -40" fill="none" stroke="#222222" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrow)"/>
+  </g>
+
+  <line x1="335" y1="840" x2="335" y2="804" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Tokenized text -->
+  <g transform="translate(265, 835)">
+    <rect x="0" y="0" width="140" height="26" rx="8" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+    <text x="70" y="17" fill="#111111" font-size="11.5" font-weight="600" text-anchor="middle">Tokenized text</text>
+  </g>
+
+  <line x1="335" y1="885" x2="335" y2="864" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="335" y="900" fill="#222222" font-size="12" font-weight="600" text-anchor="middle">Sample input text</text>
+
+  <!-- Dotted Connection Lines from Backbone to Right Callouts -->
+  <path d="M 435 560 L 565 240" fill="none" stroke="#222222" stroke-width="1.5" stroke-dasharray="3,3"/>
+  <path d="M 435 560 L 565 520" fill="none" stroke="#222222" stroke-width="1.5" stroke-dasharray="3,3"/>
+
+  <!-- ================= RIGHT COLUMN: CALLOUT 1 (FULL ATTENTION) ================= -->
+  <g transform="translate(565, 85)">
+    <!-- Dashed Callout Container -->
+    <rect x="0" y="0" width="375" height="270" rx="16" fill="#ffffff" stroke="#222222" stroke-width="1.8" stroke-dasharray="6,4"/>
+
+    <!-- Title -->
+    <text x="187" y="24" fill="#111111" font-size="13.5" font-weight="800" text-anchor="middle">Gated attention (“full attention”)</text>
+    <text x="187" y="37" fill="#059669" font-size="9" font-weight="700" text-anchor="middle">[16-Layer Sparse KV Cache | Save 6.5GB VRAM]</text>
+
+    <!-- Linear Output -->
+    <g transform="translate(137, 45)">
+      <rect x="0" y="0" width="100" height="24" rx="6" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+      <text x="50" y="16" fill="#111111" font-size="10.5" font-weight="600" text-anchor="middle">Linear</text>
+    </g>
+
+    <line x1="187" y1="90" x2="187" y2="72" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <!-- Multiply Circle (otimes) -->
+    <circle cx="187" cy="100" r="10" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+    <text x="187" y="104" fill="#111111" font-size="13" font-weight="700" text-anchor="middle">⊗</text>
+
+    <!-- Scaled Dot-Product Attention Box (Cream / Pale Yellow) -->
+    <g transform="translate(72, 126)">
+      <rect x="0" y="0" width="230" height="34" rx="8" fill="#fef9c3" stroke="#222222" stroke-width="1.5"/>
+      <text x="115" y="16" fill="#111111" font-size="11" font-weight="700" text-anchor="middle">Scaled dot-product attention</text>
+      <text x="115" y="28" fill="#b45309" font-size="8.5" font-weight="700" text-anchor="middle">Split-K Parallel SDPA (d256, 5.59x)</text>
+    </g>
+
+    <line x1="187" y1="126" x2="187" y2="112" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <!-- Sigmoid Gate Path -->
+    <path d="M 335 220 L 335 100 L 200 100" fill="none" stroke="#222222" stroke-width="1.5"/>
+    <circle cx="335" cy="135" r="9" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+    <text x="335" y="139" fill="#111111" font-size="11" text-anchor="middle">σ</text>
+    <text x="348" y="132" fill="#222222" font-size="8.5" font-weight="600">Sigmoid</text>
+    <text x="348" y="142" fill="#222222" font-size="8.5" font-weight="600">Gate</text>
+
+    <!-- Q, K, V Ingress -->
+    <line x1="105" y1="180" x2="105" y2="163" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="187" y1="180" x2="187" y2="163" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="265" y1="220" x2="265" y2="163" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <text x="105" y="176" fill="#111111" font-size="11" font-weight="700" text-anchor="middle">Q</text>
+    <text x="187" y="176" fill="#111111" font-size="11" font-weight="700" text-anchor="middle">K</text>
+    <text x="265" y="176" fill="#111111" font-size="11" font-weight="700" text-anchor="middle">V</text>
+
+    <!-- QKNorm (RMSNorm) -->
+    <g transform="translate(77, 185)">
+      <rect x="0" y="0" width="56" height="20" rx="4" fill="#ffffff" stroke="#222222" stroke-width="1.2"/>
+      <text x="28" y="14" fill="#111111" font-size="8.5" text-anchor="middle">RMSNorm</text>
+    </g>
+    <g transform="translate(159, 185)">
+      <rect x="0" y="0" width="56" height="20" rx="4" fill="#ffffff" stroke="#222222" stroke-width="1.2"/>
+      <text x="28" y="14" fill="#111111" font-size="8.5" text-anchor="middle">RMSNorm</text>
+    </g>
+    <text x="50" y="198" fill="#444444" font-size="8" font-weight="700">QKNorm</text>
+
+    <line x1="105" y1="225" x2="105" y2="207" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="187" y1="225" x2="187" y2="207" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <!-- Bottom Linear Projections -->
+    <g transform="translate(80, 227)">
+      <rect x="0" y="0" width="50" height="20" rx="4" fill="#ffffff" stroke="#222222" stroke-width="1.2"/>
+      <text x="25" y="14" fill="#111111" font-size="9" text-anchor="middle">Linear</text>
+    </g>
+    <g transform="translate(162, 227)">
+      <rect x="0" y="0" width="50" height="20" rx="4" fill="#ffffff" stroke="#222222" stroke-width="1.2"/>
+      <text x="25" y="14" fill="#111111" font-size="9" text-anchor="middle">Linear</text>
+    </g>
+    <g transform="translate(240, 227)">
+      <rect x="0" y="0" width="50" height="20" rx="4" fill="#ffffff" stroke="#222222" stroke-width="1.2"/>
+      <text x="25" y="14" fill="#111111" font-size="9" text-anchor="middle">Linear</text>
+    </g>
+    <g transform="translate(310, 227)">
+      <rect x="0" y="0" width="50" height="20" rx="4" fill="#ffffff" stroke="#222222" stroke-width="1.2"/>
+      <text x="25" y="14" fill="#111111" font-size="9" text-anchor="middle">Linear</text>
+    </g>
+  </g>
+
+  <!-- ================= RIGHT COLUMN: CALLOUT 2 (DELTANET) ================= -->
+  <g transform="translate(565, 375)">
+    <!-- Dashed Callout Container -->
+    <rect x="0" y="0" width="375" height="350" rx="16" fill="#ffffff" stroke="#222222" stroke-width="1.8" stroke-dasharray="6,4"/>
+
+    <!-- Title -->
+    <text x="187" y="24" fill="#111111" font-size="13.5" font-weight="800" text-anchor="middle">Gated DeltaNet (“linear attention”)</text>
+    <text x="187" y="37" fill="#059669" font-size="9" font-weight="700" text-anchor="middle">[48 Layers | O(1) Memory SSM Recurrent Step]</text>
+
+    <!-- Linear Output -->
+    <g transform="translate(137, 45)">
+      <rect x="0" y="0" width="100" height="24" rx="6" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+      <text x="50" y="16" fill="#111111" font-size="10.5" font-weight="600" text-anchor="middle">Linear</text>
+    </g>
+
+    <line x1="187" y1="88" x2="187" y2="72" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <!-- Multiply Circle (otimes) -->
+    <circle cx="187" cy="98" r="10" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+    <text x="187" y="102" fill="#111111" font-size="13" font-weight="700" text-anchor="middle">⊗</text>
+
+    <!-- RMSNorm -->
+    <g transform="translate(137, 120)">
+      <rect x="0" y="0" width="100" height="20" rx="4" fill="#ffffff" stroke="#222222" stroke-width="1.2"/>
+      <text x="50" y="14" fill="#111111" font-size="9" text-anchor="middle">RMSNorm</text>
+    </g>
+
+    <line x1="187" y1="120" x2="187" y2="110" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="187" y1="156" x2="187" y2="142" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <!-- Gated Delta Rule Box (Cream / Pale Yellow) -->
+    <g transform="translate(72, 156)">
+      <rect x="0" y="0" width="230" height="34" rx="8" fill="#fef9c3" stroke="#222222" stroke-width="1.5"/>
+      <text x="115" y="16" fill="#111111" font-size="11" font-weight="700" text-anchor="middle">Gated Delta Rule</text>
+      <text x="115" y="28" fill="#059669" font-size="8" font-weight="800" text-anchor="middle">128-bit float4 r_cache[32] (7.7µs/layer, 0 spill)</text>
+    </g>
+
+    <!-- SiLU Gate Path -->
+    <path d="M 335 300 L 335 98 L 200 98" fill="none" stroke="#222222" stroke-width="1.5"/>
+    <circle cx="335" cy="180" r="9" fill="#ffffff" stroke="#222222" stroke-width="1.5"/>
+    <text x="335" y="184" fill="#111111" font-size="11" text-anchor="middle">σ</text>
+    <text x="348" y="177" fill="#222222" font-size="8.5" font-weight="600">SiLU</text>
+    <text x="348" y="187" fill="#222222" font-size="8.5" font-weight="600">Gate</text>
+
+    <!-- Lines into Gated Delta Rule -->
+    <line x1="88" y1="208" x2="88" y2="192" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="112" y1="208" x2="112" y2="192" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="180" y1="228" x2="180" y2="192" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="245" y1="300" x2="245" y2="192" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <line x1="275" y1="300" x2="275" y2="192" stroke="#222222" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+    <text x="88" y="204" fill="#111111" font-size="10.5" font-weight="700" text-anchor="middle">Q</text>
+    <text x="112" y="204" fill="#111111" font-size="10.5" font-weight="700" text-anchor="middle">K</text>
+    <text x="180" y="222" fill="#111111" font-size="10.5" font-weight="700" text-anchor="middle">V</text>
+    <text x="245" y="222" fill="#111111" font-size="11" font-weight="700" text-anchor="middle">α</text>
+    <text x="275" y="222" fill="#111111" font-size="11" font-weight="700" text-anchor="middle">β</text>
+
+    <!-- L2 Norm (Pastel Yellow) -->
+    <g transform="translate(80, 210)">
+      <rect x="0" y="0" width="40" height="18" rx="4" fill="#fae092" stroke="#222222" stroke-width="1.2"/>
+      <text x="20" y="13" fill="#111111" font-size="8" font-weight="700" text-anchor="middle">L2 Norm</text>
+    </g>
+
+    <line x1="100" y1="238" x2="100" y2="230" stroke="#222222" stroke-width="1.5"/>
+
+    <!-- Sigma Circle for Q,K -->
+    <circle cx="100" cy="246" r="8" fill="#ffffff" stroke="#222222" stroke-width="1.2"/>
+    <text x="100" y="249" fill="#111111" font-size="9" text-anchor="middle">σ</text>
+
+    <!-- Conv for Q,K (Coral) -->
+    <g transform="translate(80, 260)">
+      <rect x="0" y="0" width="40" height="20" rx="4" fill="#f7a29e" stroke="#222222" stroke-width="1.2"/>
+      <text x="20" y="14" fill="#111111" font-size="8.5" font-weight="700" text-anchor="middle">Conv</text>
+    </g>
+
+    <!-- Sigma Circle for V -->
+    <circle cx="180" cy="246" r="8" fill="#ffffff" stroke="#222222" stroke-width="1.2"/>
+    <text x="180" y="249" fill="#111111" font-size="9" text-anchor="middle">σ</text>
+
+    <!-- Conv for V (Coral) -->
+    <g transform="translate(160, 260)">
+      <rect x="0" y="0" width="40" height="20" rx="4" fill="#f7a29e" stroke="#222222" stroke-width="1.2"/>
+      <text x="20" y="14" fill="#111111" font-size="8.5" font-weight="700" text-anchor="middle">Conv</text>
+    </g>
+
+    <line x1="100" y1="300" x2="100" y2="282" stroke="#222222" stroke-width="1.5"/>
+    <line x1="180" y1="300" x2="180" y2="282" stroke="#222222" stroke-width="1.5"/>
+
+    <!-- Bottom Linear Projections -->
+    <g transform="translate(75, 302)">
+      <rect x="0" y="0" width="50" height="20" rx="4" fill="#ffffff" stroke="#222222" stroke-width="1.2"/>
+      <text x="25" y="14" fill="#111111" font-size="9" text-anchor="middle">Linear</text>
+    </g>
+    <g transform="translate(155, 302)">
+      <rect x="0" y="0" width="50" height="20" rx="4" fill="#ffffff" stroke="#222222" stroke-width="1.2"/>
+      <text x="25" y="14" fill="#111111" font-size="9" text-anchor="middle">Linear</text>
+    </g>
+    <g transform="translate(235, 302)">
+      <rect x="0" y="0" width="50" height="20" rx="4" fill="#ffffff" stroke="#222222" stroke-width="1.2"/>
+      <text x="25" y="14" fill="#111111" font-size="9" text-anchor="middle">Linear</text>
+    </g>
+    <g transform="translate(310, 302)">
+      <rect x="0" y="0" width="50" height="20" rx="4" fill="#ffffff" stroke="#222222" stroke-width="1.2"/>
+      <text x="25" y="14" fill="#111111" font-size="9" text-anchor="middle">Linear</text>
+    </g>
+
+    <!-- Stride-Aware 4-in-1 GEMM Badge -->
+    <rect x="18" y="328" width="340" height="16" rx="4" fill="#d1fae5" stroke="#059669" stroke-width="1"/>
+    <text x="188" y="340" fill="#065f46" font-size="8" font-weight="800" text-anchor="middle">Stride-Aware 4-in-1 GEMM (N=4096) [0-Copy Stride: -96 Launches]</text>
+  </g>
+
+  <!-- ================= RIGHT COLUMN: CALLOUT 3 (3:1 RATIO TABLE) ================= -->
+  <g transform="translate(565, 745)">
+    <text x="0" y="18" fill="#111111" font-size="16" font-weight="800" text-decoration="underline">3:1 Ratio &amp; Precision Guard Policy</text>
+    
+    <g transform="translate(0, 38)" font-family="var(--font-mono)" font-size="11" line-height="1.6">
+      <text x="0" y="0" fill="#111111">Layer 1</text>
+      <text x="65" y="0" fill="#444444">: Linear attention → FFN</text>
+      <text x="235" y="0" fill="#b45309" font-weight="700">[Precision Guard: BF16]</text>
+
+      <text x="0" y="18" fill="#111111">Layer 2</text>
+      <text x="65" y="18" fill="#444444">: Linear attention → FFN</text>
+      <text x="235" y="18" fill="#b45309" font-weight="700">[Precision Guard: BF16]</text>
+
+      <text x="0" y="36" fill="#111111">Layer 3</text>
+      <text x="65" y="36" fill="#444444">: Linear attention → FFN</text>
+      <text x="235" y="36" fill="#b45309" font-weight="700">[Precision Guard: BF16]</text>
+
+      <text x="0" y="54" fill="#111111">Layer 4</text>
+      <text x="65" y="54" fill="#444444">: Full attention → FFN</text>
+      <text x="235" y="54" fill="#059669" font-weight="700">[Block-FP8 W8A8 Tensor Core]</text>
+
+      <text x="0" y="72" fill="#666666">...</text>
+
+      <text x="0" y="90" fill="#0084d1" font-weight="700">16 Repeating Cycles (48 DeltaNet + 16 Full Attention = 64 Layers)</text>
+      <text x="0" y="106" fill="#059669" font-weight="800">Result: 100% Exact Match Locked (5/5 AIME) + 77.1ms Latency Reclaimed</text>
+    </g>
+  </g>
+</svg>
