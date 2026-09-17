@@ -137,6 +137,26 @@ flowchart LR
    * 单卡批处理并发量（Batch Size）可以提升 10 倍以上；
    * 彻底规避了 Prefill-Decode 互相干扰（Head-of-Line Blocking）的调度难题。
 
+### 3.3 执行全景链路：How Jev Works（并行受限解码实操）
+
+下图清晰展示了 Jev **Parallel Constrained Decoding（并行受限解码）** 的端到端真实计算拓扑（以解析包含 `risk_level`、`requires_review` 与 `action_tier` 的 JSON Schema 为例）：
+
+![How Jev Works: Parallel Constrained Decoding 微架构全景](../blog/assets/how_jev_works.png)
+
+#### 完整执行流的 7 步微架构剖析：
+1. **Context + Schema 单次预填充（Prefill Once）**：将输入上下文（Context/Query）与目标 JSON Schema 打包为 Tokenized Prompt，通过 Transformer Decoder 进行单次 Prefill，计算并驻留各层的 Key/Value 缓存（KV Cache）；
+2. **多字段并行注入（Field Suffix Forward）**：针对 JSON Schema 中定义的各个字段（`risk_level`、`requires_review`、`action_tier`），将共享 KV Cache 与各个字段后缀 Token 同时送入解码器；
+3. **获取末尾隐层向量（Final Hidden State）**：为每个字段获得最终 Token 的 1,536 维 Embedding 向量；
+4. **共享 LM Head 投影**：通过单个共享线性层（Language Modeling Head）计算出对应全词表的 Logits（约 152k 维）；
+5. **候选 Token 行截断（Candidate Masking）**：**关键转折点**——不进行贪心或核采样，而是仅提取目标字段预定义候选行。以 `risk_level` 为例，从 152k 行中仅保留 `HIGH`、`MEDIUM`、`LOW`、`NONE` 这 4 个候选行；
+6. **子空间 Softmax 概率归一化**：仅在这 4 个候选行的 Logits 上做 Softmax，概率总和严格为 1（如 `HIGH: 0.9924`、`MEDIUM: 0.0068`、`LOW: 0.0006`、`NONE: 0.0002`）；
+7. **确定性数值直出与内存组装**：取出最高概率作为模型预测值，直接在内存中装配成合法 JSON。
+
+#### 三大底层工程红利：
+* **极速（Fast）**：Prefill 在所有 Context + Schema 上并行发生，彻底消灭 150~500 次自回归串行前向迭代；
+* **零标点符号生成税**：模型完全无需逐字生成大括号 `{`、引号 `"`、冒号 `:` 等无效 Token，节省 90% 以上无意义算力开销；
+* **100% 格式语法保证**：JSON Schema 由底层强类型结构体直接装配，彻底消除 JSON 解析崩溃异常。
+
 ---
 
 ## 4. 对齐训练范式突围：从 RLHF 人类讨好走向 RLCD 置信度校准
