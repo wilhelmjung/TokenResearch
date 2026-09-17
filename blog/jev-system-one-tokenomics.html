@@ -1,0 +1,1053 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>终结自回归税：TypeSafe Jev「System One 决策模型」的 Token 经济学重构与推理优化全景解析</title>
+  <meta name="description" content="深度剖析 TypeSafe AI (Diogo Almeida 创立) 发布的首个 System One 模型 Jev：放弃文本生成、并行采样器（Parallel Sampler）、RLCD 校准强化学习与输出 Token 免费背后的推理微架构革命与 Token 经济学重构。">
+  <!-- Chart.js for interactive analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0a0c10;
+      --bg-secondary: #12151c;
+      --bg-card: rgba(22, 27, 36, 0.75);
+      --bg-card-hover: rgba(30, 36, 48, 0.85);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(99, 102, 241, 0.3);
+      --text-primary: #f0f3f6;
+      --text-secondary: #9aa5b5;
+      --text-muted: #64748b;
+      --accent-indigo: #6366f1;
+      --accent-purple: #a855f7;
+      --accent-green: #10b981;
+      --accent-pink: #ec4899;
+      --accent-cyan: #06b6d4;
+      --accent-amber: #f59e0b;
+      --glow-indigo: rgba(99, 102, 241, 0.15);
+      --glow-pink: rgba(236, 72, 153, 0.12);
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .ambient-glow {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 650px;
+      background: radial-gradient(circle at 50% -10%, rgba(99, 102, 241, 0.16), transparent 70%),
+                  radial-gradient(circle at 80% 20%, rgba(236, 72, 153, 0.1), transparent 55%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Navigation Bar */
+    header.site-header {
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(10, 12, 16, 0.85);
+      border-bottom: 1px solid var(--border-color);
+      z-index: 100;
+      padding: 0.85rem 2rem;
+    }
+
+    .nav-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 700;
+      font-size: 1.15rem;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, var(--accent-indigo), var(--accent-pink));
+      color: #fff;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.35rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text-primary);
+    }
+
+    /* Main Container */
+    main.content-container {
+      position: relative;
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 3.5rem 1.5rem 6rem;
+      z-index: 1;
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      margin-bottom: 3.5rem;
+      padding: 1.5rem 0;
+    }
+
+    .hero-meta-badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.6rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+
+    .badge-primary {
+      background: rgba(99, 102, 241, 0.15);
+      border-color: rgba(99, 102, 241, 0.4);
+      color: #a5b4fc;
+    }
+
+    .badge-pink {
+      background: rgba(236, 72, 153, 0.15);
+      border-color: rgba(236, 72, 153, 0.4);
+      color: #f472b6;
+    }
+
+    .badge-green {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #34d399;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 4vw, 3.1rem);
+      font-weight: 900;
+      line-height: 1.25;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, #ffffff 10%, #cbd5e1 50%, #818cf8 90%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+      max-width: 860px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+    }
+
+    /* Metric Grid */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 1.5rem;
+      text-align: left;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent-indigo), var(--accent-pink));
+      opacity: 0.8;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-3px);
+      background: var(--bg-card-hover);
+      border-color: rgba(99, 102, 241, 0.3);
+      box-shadow: 0 12px 28px -8px rgba(99, 102, 241, 0.2);
+    }
+
+    .metric-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      font-weight: 700;
+      margin-bottom: 0.35rem;
+    }
+
+    .metric-val {
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      color: #fff;
+      line-height: 1.1;
+      margin-bottom: 0.35rem;
+    }
+
+    .metric-sub {
+      font-size: 0.82rem;
+      color: var(--text-secondary);
+    }
+
+    /* Content Layout */
+    .section-block {
+      margin-bottom: 4rem;
+    }
+
+    .section-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.75rem;
+    }
+
+    .section-title span.number {
+      font-size: 1rem;
+      color: var(--accent-indigo);
+      font-family: var(--font-mono);
+      background: rgba(99, 102, 241, 0.1);
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      border: 1px solid rgba(99, 102, 241, 0.25);
+    }
+
+    p {
+      margin-bottom: 1.25rem;
+      color: #cbd5e1;
+      font-size: 1.02rem;
+    }
+
+    /* Card Panels */
+    .card-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 2rem;
+      margin: 1.8rem 0;
+      backdrop-filter: blur(12px);
+    }
+
+    /* Comparison Table */
+    .compare-table-container {
+      overflow-x: auto;
+      margin: 2rem 0;
+      border-radius: 14px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-card);
+    }
+
+    table.compare-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.95rem;
+    }
+
+    table.compare-table th {
+      background: rgba(255, 255, 255, 0.04);
+      padding: 1rem 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    table.compare-table td {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #cbd5e1;
+    }
+
+    table.compare-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .table-tag {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .tag-free {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .tag-expensive {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Code Block */
+    .code-box {
+      background: #0d1117;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1.25rem;
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      line-height: 1.6;
+      color: #e2e8f0;
+      overflow-x: auto;
+      margin: 1.5rem 0;
+      position: relative;
+    }
+
+    .code-box-header {
+      display: flex;
+      justify-content: space-between;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    /* Interactive Calculator */
+    .calc-container {
+      background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(236, 72, 153, 0.06));
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      border-radius: 20px;
+      padding: 2.2rem;
+      margin: 2.5rem 0;
+    }
+
+    .calc-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .calc-field label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #cbd5e1;
+      margin-bottom: 0.5rem;
+    }
+
+    .calc-field input, .calc-field select {
+      width: 100%;
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 0.75rem 1rem;
+      color: #fff;
+      font-size: 1rem;
+      font-weight: 600;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .calc-field input:focus, .calc-field select:focus {
+      border-color: var(--accent-indigo);
+    }
+
+    .calc-results {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .calc-result-box {
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 1.25rem;
+    }
+
+    .calc-result-val {
+      font-size: 1.85rem;
+      font-weight: 900;
+      color: #fff;
+      margin-top: 0.25rem;
+    }
+
+    /* Architecture Flow Diagram */
+    .flow-card {
+      background: #0d121c;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.75rem;
+      margin: 1.8rem 0;
+    }
+
+    /* Footer */
+    footer.site-footer {
+      border-top: 1px solid var(--border-color);
+      padding: 3rem 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--accent-indigo);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ambient-glow"></div>
+
+  <!-- Header Navigation -->
+  <header class="site-header">
+    <div class="nav-container">
+      <div class="brand">
+        <a href="../" style="display:inline-flex;align-items:center;gap:0.35rem;padding:0.25rem 0.65rem;margin-right:0.6rem;border-radius:6px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#cbd5e1;text-decoration:none;font-size:0.8rem;font-weight:600;">🏠 首页</a>
+        <span>TokenResearch</span>
+        <span class="brand-badge">SYSTEM ONE 专题</span>
+      </div>
+      <nav>
+        <ul class="nav-links">
+          <li><a href="#manifesto">造工业品不造神</a></li>
+          <li><a href="#microarch">微架构革命</a></li>
+          <li><a href="#rlcd">RLCD 校准</a></li>
+          <li><a href="#tokenomics">Token 经济学</a></li>
+          <li><a href="#calculator">TCO 测算器</a></li>
+          <li><a href="#vllm-sr" style="color:var(--accent-pink);font-weight:700;">替代 vLLM-SR？</a></li>
+          <li><a href="index.html" style="color:var(--accent-green);font-weight:700;">🔥 MU25 战报</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="content-container">
+
+    <!-- Hero Header -->
+    <section class="hero">
+      <div class="hero-meta-badges">
+        <span class="badge badge-primary">⚡️ TypeSafe AI · Jev 首发深度拆解</span>
+        <span class="badge badge-pink">🎯 Parallel Sampler 并行采样器</span>
+        <span class="badge badge-green">💸 输出 Token 免费 · 0% 类型错误</span>
+      </div>
+      <h1>终结自回归税：Jev「System One 模型」的<br/>Token 经济学重构与推理优化全景解析</h1>
+      <p class="hero-subtitle">
+        当整个行业都在自回归生成的“慢思考思维链”上狂奔时，前 OpenAI 核心研究员（ChatGPT / RLHF 发明者）Diogo Almeida 却选择放弃文本生成。为什么说“放弃 Strings”反而引爆了杰文斯悖论？深入剖析 RLCD、并行采样器与每百万 Token 边际成本归零的底层密码。
+      </p>
+    </section>
+
+    <!-- Key Metrics Highlight -->
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">端到端响应时延</div>
+        <div class="metric-val" style="color:var(--accent-indigo);">70–500<span style="font-size:1.1rem;font-weight:600;">ms</span></div>
+        <div class="metric-sub">相比前沿 LLM 提速 <strong>40x – 200x</strong></div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">输出 Token 计费</div>
+        <div class="metric-val" style="color:var(--accent-green);">FREE</div>
+        <div class="metric-sub">Too cheap to meter（边际计算近乎为零）</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">输入 Token 单价</div>
+        <div class="metric-val" style="color:#f472b6;">$0.042<span style="font-size:1rem;font-weight:600;">/MTok</span></div>
+        <div class="metric-sub">每 10 亿 Token 仅 $42，仅为 Claude 的 1/70</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Schema 匹配错误率</div>
+        <div class="metric-val" style="color:var(--accent-cyan);">0.00%</div>
+        <div class="metric-sub">数学级类型保证，彻底消除 JSON 崩溃</div>
+      </div>
+    </div>
+
+    <!-- Chapter 1: The Manifesto & The Problem -->
+    <section class="section-block" id="manifesto">
+      <h2 class="section-title"><span class="number">01</span> 《造工业品，不造神》：告别“无马马车”与智能时代的 SQL 革命</h2>
+      
+      <p>
+        在发布 Jev 的同时，TypeSafe AI 发布了一篇震撼行业的技术宣言——<a href="https://typesafe.ai/manifesto" target="_blank" style="color:var(--accent-indigo);font-weight:700;text-decoration:underline;">《Composable AI: Build Prod, Not God》（可组合 AI：造工业品，不造神）</a>。
+      </p>
+
+      <blockquote style="border-left:4px solid var(--accent-indigo);padding:1rem 1.25rem;background:rgba(99,102,241,0.06);border-radius:0 12px 12px 0;margin:1.5rem 0;color:#e2e8f0;font-size:1.05rem;line-height:1.7;">
+        “我们并不打算追逐那个不断后移的‘AGI 终极目标’，因为当今的模型早已跨越了创造巨大经济价值的智力门槛。然而，在全行业投入了数万亿美元后，绝大多数软件依然毫无实质性智能，普通人的生活也未被改变。这向我们敲响了警钟：<strong>当前 AI 落地的核心瓶颈根本不是‘原始智力不够’，而是‘今天的智力形态无法被软件直接构建在其上（Hard to build on）’。我们造的是生产级工业品，不是造全能神（We're building prod, not God）！</strong>”
+      </blockquote>
+
+      <!-- Manifesto Three Key Insights -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(310px, 1fr));gap:1.25rem;margin:2rem 0;">
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1.5rem;">
+          <div style="font-size:1.8rem;margin-bottom:0.5rem;">🐎 ➔ 🚗</div>
+          <h4 style="color:#fff;font-size:1.05rem;margin-bottom:0.5rem;">告别“无马马车”（Horseless Carriages）</h4>
+          <p style="font-size:0.88rem;color:var(--text-secondary);margin-bottom:0;line-height:1.6;">
+            1903 年福特 Model T 问世前，早期汽车被称为“无马马车”：发明家机械地把马换成发动机，却死守高底盘、硬弹簧，甚至保留了<strong>插马鞭的插槽（whip socket）</strong>！现在的 Chatbot 就是保留了马鞭插槽的过渡品——它假设对面坐着一个人，强行把人类栓在回路中（Human-in-the-loop），导致 AI 无法在系统后台静默运转。
+          </p>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1.5rem;">
+          <div style="font-size:1.8rem;margin-bottom:0.5rem;">🔀 ➔ 🧠</div>
+          <h4 style="color:#fff;font-size:1.05rem;margin-bottom:0.5rem;">软件运行本质：对语义和意图分支</h4>
+          <p style="font-size:0.88rem;color:var(--text-secondary);margin-bottom:0;line-height:1.6;">
+            现代软件从来不是靠“聊天”运行的，而是靠在比特位上的确定性条件分支（<code>if bit == 1</code>）构建起了数字文明。计算机仅靠分支比特就能做这么多事，想象一下如果软件能<strong>直接对常识、理解和语义意图进行分支（Branch on intent & understanding）</strong>！这就是机器原生神经符号 AI（Neuro-Symbolic AI）的真正威力。
+          </p>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:1.5rem;">
+          <div style="font-size:1.8rem;margin-bottom:0.5rem;">🗄️ ➔ 🧱</div>
+          <h4 style="color:#fff;font-size:1.05rem;margin-bottom:0.5rem;">智能时代的“SQL 革命”与分层堆叠</h4>
+          <p style="font-size:0.88rem;color:var(--text-secondary);margin-bottom:0;line-height:1.6;">
+            发明数据库的人想不到 Google，发明 TCP/IP 的人想不到 Stripe。今天的大模型智能就像 <strong>SQL 诞生前的数据库</strong>：强大但每次使用都得特例定制（bespoke）。<strong>安全与可信是分层堆叠的前提（Safety is a precondition for layering）</strong>——只有组件具备严格类型和校准置信度，工程师才敢把它深埋在生产系统第 5 层依赖链中！
+          </p>
+        </div>
+      </div>
+
+      <p>
+        TypeSafe AI 创始人 <strong>Diogo Almeida</strong>（在 OpenAI 期间曾主导将 InstructGPT/ChatGPT 推向实用的核心 RLHF 方法）在发布 Jev 时直言：正是由于全行业都在沿着“无马马车”的对话助手老路狂奔，导致现有的自回归 LLM 架构撞上了三大无法逾越的工程死锁：
+      </p>
+
+      <div class="card-panel">
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:1.25rem;">
+          <li style="display:flex;gap:1rem;align-items:flex-start;">
+            <span style="background:rgba(239,68,68,0.2);color:#f87171;padding:0.2rem 0.6rem;border-radius:6px;font-weight:bold;font-size:0.85rem;">死锁 1</span>
+            <div>
+              <strong style="color:#fff;">字符串依赖税（The String Tax）与格式脆弱性</strong>：软件是强类型驱动的（Struct, Enum, Float），而大模型原生吐出的是松散自由的字符串（Strings）。哪怕只要一个简单的布尔判断，也必须在 Prompt 里反复恳求模型“只输出 JSON，不要任何多余字符”，一旦模型附带了 <code>```json</code> 或缺少闭合大括号，就会导致下游解析器抛出致命异常。两层嵌套成功率跌至 81%，五层嵌套系统直接崩溃。
+            </div>
+          </li>
+          <li style="display:flex;gap:1rem;align-items:flex-start;">
+            <span style="background:rgba(239,68,68,0.2);color:#f87171;padding:0.2rem 0.6rem;border-radius:6px;font-weight:bold;font-size:0.85rem;">死锁 2</span>
+            <div>
+              <strong style="color:#fff;">自回归显存带宽瓶颈（Memory-Bound Latency Wall）</strong>：自回归生成每个 Token 都必须将整张 GPU 的全权重和 KV Cache 从显存搬入计算核心一遍。仅仅为了生成一个 <code>{"status": "approved"}</code>，GPU 就需要串行空转数十次前向传播，耗时 2~5 秒，根本无法嵌入 SLA 要求在 200ms 以内的在线交易或微服务流水线。
+            </div>
+          </li>
+          <li style="display:flex;gap:1rem;align-items:flex-start;">
+            <span style="background:rgba(239,68,68,0.2);color:#f87171;padding:0.2rem 0.6rem;border-radius:6px;font-weight:bold;font-size:0.85rem;">死锁 3</span>
+            <div>
+              <strong style="color:#fff;">认识论不诚实（Epistemic Dishonesty）</strong>：经过传统人类偏好强化学习（RLHF）训练的模型，具有强烈的讨好心理和过度自信倾向。即使在模型完全不知道答案的模糊地带，它也会极其笃定地给出一个错误答案。缺乏校准的概率，使得工程师无法在代码中写下可靠的防御性断言或降级分支。
+            </div>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Chapter 2: Microarchitecture -->
+    <section class="section-block" id="microarch">
+      <h2 class="section-title"><span class="number">02</span> 推理底座微架构革新：从自回归解码到并行采样器（Parallel Sampler）</h2>
+      <p>
+        Jev 最具技术颠覆性的突破，在于它在物理底层上<strong>彻底剔除了自回归解码循环（Autoregressive Decoding Loop）</strong>。
+      </p>
+
+      <div class="flow-card">
+        <h4 style="color:#fff;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;">
+          <span style="color:var(--accent-pink);">⚡️ 计算微架构对比</span>：传统 LLM 自回归链 vs Jev 单次前向并行采样
+        </h4>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;">
+          <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:1.2rem;">
+            <div style="color:#f87171;font-weight:bold;margin-bottom:0.5rem;font-size:0.9rem;">传统 LLM：O(N) 串行解码</div>
+            <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.75rem;">
+              Prompt → Prefill → Token 1 → Token 2 → ... → Token N (自回归串行循环)。
+            </p>
+            <ul style="font-size:0.8rem;color:#94a3b8;padding-left:1.2rem;line-height:1.6;">
+              <li>算子强度跌破 1 FLOP/Byte，显存带宽极度饥饿</li>
+              <li>每一步都需要搬移数十 GB 权重和庞大 KV Cache</li>
+              <li>端到端耗时：3000ms – 15000ms</li>
+            </ul>
+          </div>
+          <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.3);border-radius:12px;padding:1.2rem;">
+            <div style="color:#818cf8;font-weight:bold;margin-bottom:0.5rem;font-size:0.9rem;">Jev：O(1) 单次前向并行决策</div>
+            <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:0.75rem;">
+              State Context → 深度表征骨干网 → 并行决策头 (Choice / Score / Noul)。
+            </p>
+            <ul style="font-size:0.8rem;color:#cbd5e1;padding-left:1.2rem;line-height:1.6;">
+              <li>完全处于 Compute-Bound 高效区间，MFU 达 65%+</li>
+              <li><strong>KV Cache 内存与调度开销彻底归零</strong></li>
+              <li>端到端耗时：70ms – 250ms（提速百倍）</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Latency & Throughput Chart -->
+      <div class="card-panel">
+        <h3 style="font-size:1.15rem;font-weight:700;margin-bottom:1.25rem;color:#fff;">
+          📊 真实业务自动化工作流端到端延迟对比 (ms，越低越好)
+        </h3>
+        <div style="height:320px;position:relative;">
+          <canvas id="latencyChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chapter 3: RLCD -->
+    <section class="section-block" id="rlcd">
+      <h2 class="section-title"><span class="number">03</span> 对齐算法革新：从“讨好人类”的 RLHF 走向“置信度校准”的 RLCD</h2>
+      <p>
+        传统的 LLM 强化学习普遍基于 <strong>RLHF（人类反馈强化学习）</strong>。RLHF 的核心目标是讨好人类标注员，由于人类偏爱语言肯定、逻辑规整的陈述，导致模型被迫学会了“假装自信”；而在数学逻辑场景下使用的 <strong>RLVR（可验证奖励）</strong>，则主要用于激发耗时长达数十秒的慢思考思维链。
+      </p>
+      <p>
+        TypeSafe 提出了全新的训练范式——<strong>RLCD（Reinforcement Learning for Calibrated Decisions，校准决策强化学习）</strong>。
+      </p>
+
+      <div class="card-panel" style="border-left:4px solid var(--accent-indigo);">
+        <h4 style="color:#fff;margin-bottom:0.5rem;font-size:1.05rem;">🎯 认识论诚实（Epistemic Honesty）的数学定义</h4>
+        <p style="margin-bottom:0.75rem;font-size:0.95rem;">
+          RLCD 直接将优化目标瞄准 Brier Score 与预期校准误差（ECE）：
+        </p>
+        <div style="font-family:var(--font-mono);background:#0f172a;padding:1rem;border-radius:8px;font-size:0.9rem;color:#a5b4fc;margin-bottom:1rem;">
+          ECE = ∑ ( |B_m| / N ) * | accuracy(B_m) - confidence(B_m) |
+        </div>
+        <p style="font-size:0.92rem;color:var(--text-secondary);margin-bottom:0;">
+          这保证了：<strong>当 Jev 输出一个 85% 置信度的判断时，在海量统计中它的实际胜率严格收敛在 85% 左右</strong>。它绝不假装 100% 确定，也不随意给出模糊猜测。
+        </p>
+      </div>
+
+      <div class="code-box">
+        <div class="code-box-header">
+          <span>Python 3.10+ · TypeSafe SDK 生产级调用范例</span>
+          <span>zero-parsing · type-safe</span>
+        </div>
+<pre><code><span style="color:#f472b6;">from</span> typesafe_sdk <span style="color:#f472b6;">import</span> TypeSafeClient, Choice, Score, Noul
+
+client = TypeSafeClient()
+
+<span style="color:#64748b;"># 提交非结构化状态文本，声明强类型期望</span>
+decision = client.system_one(
+    state=<span style="color:#38bdf8;">"用户在最近48小时内发起两次退款申请，当前争议金额 $240，履约物流显示延误3天..."</span>,
+    questions={
+        <span style="color:#38bdf8;">"category"</span>: Choice(
+            instructions=<span style="color:#38bdf8;">"工单归类"</span>,
+            options=[<span style="color:#38bdf8;">"logistics_delay"</span>, <span style="color:#38bdf8;">"product_quality"</span>, <span style="color:#38bdf8;">"fraud_suspect"</span>]
+        ),
+        <span style="color:#38bdf8;">"risk_score"</span>: Score(instructions=<span style="color:#38bdf8;">"欺诈风险综合评级"</span>, min=0, max=100),
+        <span style="color:#38bdf8;">"auto_refund"</span>: Noul(instructions=<span style="color:#38bdf8;">"是否符合快速自动退款策略？"</span>)
+    }
+)
+
+<span style="color:#64748b;"># 原生强类型访问，无需任何 json.loads() 或正则提取</span>
+print(decision.choices[<span style="color:#38bdf8;">"category"</span>].choice)       <span style="color:#64748b;"># -> 'logistics_delay'</span>
+print(decision.scores[<span style="color:#38bdf8;">"risk_score"</span>].score)          <span style="color:#64748b;"># -> 14.2 (高置信低风险)</span>
+
+<span style="color:#64748b;"># 严格利用校准置信度控制核心业务流转</span>
+<span style="color:#f472b6;">if</span> decision.nouls[<span style="color:#38bdf8;">"auto_refund"</span>].probability &gt; <span style="color:#fbbf24;">0.95</span>:
+    execute_instant_refund()  <span style="color:#64748b;"># 95%+ 真实概率，全自动放行</span>
+<span style="color:#f472b6;">else</span>:
+    route_to_human_auditor()  <span style="color:#64748b;"># 低于阈值，优雅回退到人工坐席</span></code></pre>
+      </div>
+    </section>
+
+    <!-- Chapter 4: Tokenomics & Jevons Paradox -->
+    <section class="section-block" id="tokenomics">
+      <h2 class="section-title"><span class="number">04</span> Token 经济学重构：为什么输出 Token 可以“免费”？</h2>
+      <p>
+        在主流云厂商的大模型定价单上，输出 Token（Completion Token）的单价普遍是输入 Token（Prompt Token）的 <strong>3 到 5 倍</strong>。例如 GPT-4o 输出 \$10/M、Claude 3.5 Sonnet 输出 \$15/M。
+      </p>
+
+      <div class="compare-table-container">
+        <table class="compare-table">
+          <thead>
+            <tr>
+              <th>模型阵营</th>
+              <th>采样与计算机制</th>
+              <th>输入单价 (MTok)</th>
+              <th>输出单价 (MTok)</th>
+              <th>格式错误率</th>
+              <th>单次决策典型耗时</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>GPT-4o / GPT-5 级</strong></td>
+              <td>串行自回归解码</td>
+              <td>$2.50 – $5.00</td>
+              <td><span class="table-tag tag-expensive">$10.00 – $15.00</span></td>
+              <td>0.5% – 2.5%</td>
+              <td>2,500 – 6,000 ms</td>
+            </tr>
+            <tr>
+              <td><strong>Claude 3.5 / Fable 级</strong></td>
+              <td>串行自回归解码</td>
+              <td>$3.00</td>
+              <td><span class="table-tag tag-expensive">$15.00</span></td>
+              <td>0.3% – 1.8%</td>
+              <td>2,000 – 5,000 ms</td>
+            </tr>
+            <tr>
+              <td><strong>TypeSafe Jev (S1)</strong></td>
+              <td><strong>一次前向并行采样</strong></td>
+              <td><strong>$0.042</strong></td>
+              <td><span class="table-tag tag-free">FREE ($0.00)</span></td>
+              <td><strong>0.00% (数学保证)</strong></td>
+              <td><strong>70 – 250 ms</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        <strong>为什么 Jev 的输出 Token 能够宣布免费？</strong>
+      </p>
+      <p>
+        因为在传统自回归模型中，输出昂贵的本质是<strong>全权重显存带宽独占税</strong>——每吐一个字，GPU 都要把整卡显存遍历一遍；而 Jev 放弃了自回归文本生成，在输入经过骨干网络抽取的最后一刻，输出决策头（Classification / Regression Heads）在同一个 GPU 算子批次内瞬间完成计算，其产生的附加计算量在整个前向中占比不足 <strong>0.01%</strong>，其边际推理成本低到无法单独计量！
+      </p>
+
+      <!-- Jevons Paradox Explainer -->
+      <div class="card-panel" style="background:linear-gradient(135deg, rgba(236,72,153,0.08), rgba(99,102,241,0.08));">
+        <h3 style="color:#fff;font-size:1.25rem;margin-bottom:0.75rem;">
+          🔥 杰文斯悖论（Jevons Paradox）的二次引爆
+        </h3>
+        <p>
+          1865 年，经济学家杰文斯观察到蒸汽机使煤炭效率飙升，结果煤炭总消耗不降反升千倍。TypeSafe 将模型命名为 <strong>Jev</strong>，正是断言：
+        </p>
+        <blockquote style="border-left:3px solid var(--accent-pink);padding-left:1rem;color:#f1f5f9;font-style:italic;margin:1rem 0;">
+          “当单次大模型智能决策的成本从 0.8 美分断崖式下跌至 0.004 美分（跌落 200 倍），并且响应时延压入 100 毫秒以内时，企业不会减少 AI 预算，而是会把原本由于成本过高而无法自动化的百亿级低价值场景——网络安全探针分析、海量日志语义提取、每一封邮件的情绪路由、每一个微服务的入参合规校验——全部装上 AI。”
+        </blockquote>
+      </div>
+    </section>
+
+    <!-- Chapter 5: Interactive Calculator -->
+    <section class="section-block" id="calculator">
+      <h2 class="section-title"><span class="number">05</span> 交互式测算：业务自动化工作流 TCO 节省沙盘</h2>
+      <p>
+        模拟您的企业若将日常决策工作流从传统通用大模型迁移至“<strong>Jev (System 1) + 深度模型 (System 2) 双层漏斗</strong>”后的综合财务影响：
+      </p>
+
+      <div class="calc-container">
+        <div class="calc-grid">
+          <div class="calc-field">
+            <label>每日自动化决策调用量 (次/天)</label>
+            <input type="number" id="dailyRequests" value="1000000" step="100000" oninput="recalcTCO()">
+            <span style="font-size:0.75rem;color:var(--text-muted);">例：1,000,000 代表每日 100 万次调用</span>
+          </div>
+          <div class="calc-field">
+            <label>单次上下文长度 (Tokens)</label>
+            <input type="number" id="avgTokens" value="1200" step="100" oninput="recalcTCO()">
+            <span style="font-size:0.75rem;color:var(--text-muted);">业务数据、日志或工单文本长度</span>
+          </div>
+          <div class="calc-field">
+            <label>System 1 自动化拦截率 (%)</label>
+            <select id="s1Ratio" onchange="recalcTCO()">
+              <option value="0.92" selected>92% (高置信，仅 8% 转发复杂 LLM)</option>
+              <option value="0.85">85% (中等置信，15% 转发复杂 LLM)</option>
+              <option value="0.98">98% (纯高频过滤与风控路由)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="calc-results">
+          <div class="calc-result-box">
+            <div style="font-size:0.75rem;font-weight:700;color:#f87171;text-transform:uppercase;">全量使用传统 LLM 日成本</div>
+            <div class="calc-result-val" id="legacyCost" style="color:#f87171;">$7,200</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">基于 $3.00/M 输入 + $15.00/M 输出</div>
+          </div>
+          <div class="calc-result-box">
+            <div style="font-size:0.75rem;font-weight:700;color:var(--accent-green);text-transform:uppercase;">Jev 双层漏斗日成本</div>
+            <div class="calc-result-val" id="optimizedCost" style="color:var(--accent-green);">$626</div>
+            <div style="font-size:0.75rem;color:var(--text-muted);margin-top:0.25rem;">Jev 免费输出 + 仅 8% 转发 System 2</div>
+          </div>
+          <div class="calc-result-box" style="border-color:rgba(99,102,241,0.4);background:rgba(99,102,241,0.12);">
+            <div style="font-size:0.75rem;font-weight:700;color:#a5b4fc;text-transform:uppercase;">每年节省资金 (Annual Savings)</div>
+            <div class="calc-result-val" id="annualSavings" style="color:#fff;">$2,400,000</div>
+            <div style="font-size:0.75rem;color:var(--accent-green);margin-top:0.25rem;font-weight:700;" id="savingsPct">-91.3% 降本</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chapter 6: Dual Funnel Architecture -->
+    <section class="section-block">
+      <h2 class="section-title"><span class="number">06</span> 产业架构终局：System 1 与 System 2 的双层漏斗共生</h2>
+      <p>
+        Jev 的出现并不意味着生成式大模型或推理大模型（如 DeepSeek-R1、o3、Claude 3.7）会消亡。相反，它指明了未来大模型基础设施的**终极协同架构——双层分流漏斗（Two-Tier Hybrid Funnel）**：
+      </p>
+
+      <div class="card-panel">
+        <div style="display:flex;flex-direction:column;gap:1.5rem;">
+          <div style="display:flex;gap:1.25rem;align-items:center;background:rgba(255,255,255,0.03);padding:1.25rem;border-radius:12px;">
+            <div style="font-size:2rem;">🏎️</div>
+            <div>
+              <h4 style="color:#fff;margin-bottom:0.25rem;">第一层：System 1 极速常驻门禁 (Jev / 专属决策模型)</h4>
+              <p style="font-size:0.9rem;margin-bottom:0;color:var(--text-secondary);">
+                承担 100% 原始流量。在 100ms 内对上下文进行特征投影与置信度判定。处理常规分类、风控初筛、违规拦截与字段提取，<strong>就地终结 90% 以上的高频决策</strong>。
+              </p>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:1.25rem;align-items:center;background:rgba(255,255,255,0.03);padding:1.25rem;border-radius:12px;">
+            <div style="font-size:2rem;">🧠</div>
+            <div>
+              <h4 style="color:#fff;margin-bottom:0.25rem;">第二层：System 2 慢思考长链推导 (DeepSeek-R1 / o3)</h4>
+              <p style="font-size:0.9rem;margin-bottom:0;color:var(--text-secondary);">
+                仅承接 System 1 筛选出的 <strong>10% 异常案、复杂长程逻辑与低置信度边缘案例</strong>。此时给予其充足的思考时间（10~60 秒）和高溢价 Token 预算，换取复杂决策的最优解。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chapter 7: vLLM-SR Gateway Replacement -->
+    <section class="section-block" id="vllm-sr">
+      <h2 class="section-title"><span class="number">07</span> 深度实战攻坚：Jev 能否替换/重构 vLLM-SR 等前置语义路由网关？</h2>
+      <p>
+        在近期的开源推理生态中，<strong>vLLM-SR（vLLM Semantic Router）</strong> 等语义网关成为了多模型混合架构（Mixture-of-Models, MoM）的核心枢纽。架构师们普遍在思考一个极其尖锐的工程问题：<strong>Jev 是否可以替换掉 vLLM-SR 这类前置语义路由与安全网关模型？</strong>
+      </p>
+      <p>
+        <strong>答案是：不仅完全可以，而且在计算范式和 Token 经济学上，Jev 对现有网关模型构成了降维打击。</strong>
+      </p>
+
+      <div class="flow-card">
+        <h4 style="color:#fff;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;">
+          <span style="color:var(--accent-pink);">⚖️ 现有前置路由机制与 Jev 的三难困境对比</span>
+        </h4>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:1rem;">
+          <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:1rem;">
+            <div style="color:#f87171;font-weight:700;font-size:0.88rem;margin-bottom:0.35rem;">传统方案 A · 纯向量/Embedding 检索</div>
+            <p style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5;margin-bottom:0;">
+              <strong>致命硬伤</strong>：速度虽快（5~10ms），但缺乏深层推理与注意力机制。面对逻辑转折、长上下文或对抗式越狱攻击时，误判率极高。
+            </p>
+          </div>
+          <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:1rem;">
+            <div style="color:#fbbf24;font-weight:700;font-size:0.88rem;margin-bottom:0.35rem;">传统方案 B · 开源小模型 (SLM) 自回归</div>
+            <p style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5;margin-bottom:0;">
+              <strong>致命硬伤</strong>：仍处于自回归 Decode 的显存带宽瓶颈，耗时 150~300ms；且未经置信度校准，无法设置严谨的置信度降级阈值。
+            </p>
+          </div>
+          <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:1rem;">
+            <div style="color:#38bdf8;font-weight:700;font-size:0.88rem;margin-bottom:0.35rem;">传统方案 C · 调用商用 LLM (GPT-4o-mini)</div>
+            <p style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5;margin-bottom:0;">
+              <strong>致命硬伤</strong>：成本倒挂与延迟失控。网关决策耗时高达 800~1500ms 且按 Token 逐字计费，“网关比实际业务调用更贵更慢”。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-panel" style="border-left:4px solid var(--accent-green);">
+        <h4 style="color:#fff;margin-bottom:0.75rem;font-size:1.1rem;">⚡️ Jev 赋能语义网关的“三原语映射”</h4>
+        <p style="font-size:0.95rem;margin-bottom:1rem;">
+          Jev 的三大类型原语与语义网关的全部职责实现了<strong>像素级精准对齐</strong>：
+        </p>
+        <ul style="list-style:none;display:flex;flex-direction:column;gap:0.75rem;font-size:0.9rem;color:#cbd5e1;">
+          <li style="display:flex;align-items:center;gap:0.75rem;">
+            <span style="font-family:var(--font-mono);background:rgba(99,102,241,0.2);color:#a5b4fc;padding:0.15rem 0.5rem;border-radius:4px;font-weight:bold;">Choice</span>
+            <span>➔ <strong>目标模型路由</strong>：<code>Choice(options=["flash_local", "deepseek_r1", "rag_pipeline"])</code>，直接出枚举值，0% 格式错误。</span>
+          </li>
+          <li style="display:flex;align-items:center;gap:0.75rem;">
+            <span style="font-family:var(--font-mono);background:rgba(236,72,153,0.2);color:#f472b6;padding:0.15rem 0.5rem;border-radius:4px;font-weight:bold;">Score</span>
+            <span>➔ <strong>任务复杂度量化</strong>：<code>Score(min=0, max=100)</code>，70ms 内输出校准的数值复杂度指标，精准界定是否需要慢思考。</span>
+          </li>
+          <li style="display:flex;align-items:center;gap:0.75rem;">
+            <span style="font-family:var(--font-mono);background:rgba(16,185,129,0.2);color:#34d399;padding:0.15rem 0.5rem;border-radius:4px;font-weight:bold;">Noul</span>
+            <span>➔ <strong>安全护栏与越狱拦截</strong>：<code>Noul(instructions="检测提示词注入与违规敏感内容")</code>，与路由在同一次前向中完成，零二次串联开销。</span>
+          </li>
+        </ul>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin:1.5rem 0;">
+        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:1.25rem;">
+          <h5 style="color:#fff;font-size:0.95rem;margin-bottom:0.5rem;">落地范式 1 · 自建轻量网关【直接替代】</h5>
+          <p style="font-size:0.83rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0;">
+            对于目前内部自研轻量路由代理的团队，可以直接废弃繁琐脆弱的 Prompt + 正则清洗代码，换成仅数十行 Python 代码的 Jev 原生 SDK。不仅单次路由成本降至 $0.00004（降幅 99%），且完全消除 JSON 崩溃重试。
+          </p>
+        </div>
+        <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:1.25rem;">
+          <h5 style="color:#fff;font-size:0.95rem;margin-bottom:0.5rem;">落地范式 2 · 企业大规模集群【强强联合】</h5>
+          <p style="font-size:0.83rem;color:var(--text-secondary);line-height:1.6;margin-bottom:0;">
+            在大型 K8s 推理集群中，最优实践是<strong>保留 vLLM-SR 的底盘与网络层（连接池、OpenAI 协议兼容、Kubernetes 调度），而将 Jev 作为 vLLM-SR 的核心信号生成器（First-Class Signal Provider）</strong>，由 Jev 负责提取深层意图并注入决策！
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Chapter 8: Conclusion & Cross Links -->
+    <section class="section-block">
+      <h2 class="section-title"><span class="number">08</span> 总结与启示：对开源推理引擎与自研硬件的思考</h2>
+      <p>
+        TypeSafe Jev 给我们带来的最重要启示是：<strong>过度迷信自回归生成是推理工程的一条巨大弯路。</strong>
+      </p>
+      <p>
+        在开源生态中，我们不必等待闭源 API。借助开源 SOTA 权重（如 Qwen2.5/Qwen3.8、DeepSeek 蒸馏系列），通过剥离词表解码器、挂载专用决策头并使用 RLCD 方法进行概率校准训练，我们完全可以在本地硬件（例如我们的 <strong>4× NVIDIA L20</strong> 裸金属集群、<strong>Apple Mac Studio 512GB UMA</strong> 或 <strong>GB10</strong>）上构建高并发、超低延迟的开源 System One 引擎！
+      </p>
+
+      <!-- Cross Links Section -->
+      <div class="card-panel" style="background:rgba(16,185,129,0.05);border-color:rgba(16,185,129,0.25);margin-top:2.5rem;">
+        <h3 style="color:#fff;font-size:1.15rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;">
+          <span>📚</span> 关联研究报告与工程战报导航
+        </h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:1rem;">
+          <a href="index.html" style="text-decoration:none;display:block;background:rgba(0,0,0,0.4);padding:1rem;border-radius:10px;border:1px solid rgba(255,255,255,0.06);transition:border-color 0.2s;">
+            <div style="color:var(--accent-green);font-weight:700;font-size:0.9rem;margin-bottom:0.25rem;">🔥 MU25 专属裸机引擎战报 →</div>
+            <div style="font-size:0.8rem;color:var(--text-secondary);">Qwen3.6-27B 在 4×L20 上的底层 CUDA 优化与 AIME 2026 满分闭环</div>
+          </a>
+          <a href="../Topic-1-TokenEconomy/" style="text-decoration:none;display:block;background:rgba(0,0,0,0.4);padding:1rem;border-radius:10px;border:1px solid rgba(255,255,255,0.06);transition:border-color 0.2s;">
+            <div style="color:var(--accent-indigo);font-weight:700;font-size:0.9rem;margin-bottom:0.25rem;">📘 2026 Token 经济学白皮书 →</div>
+            <div style="font-size:0.8rem;color:var(--text-secondary);">从宏观暴增 1400 倍到五层架构与 TCO 100x 降本路径</div>
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <p>Token Research Institute · 深度大模型推理基础设施与 Token 经济学全景调研库</p>
+    <p style="margin-top:0.5rem;">
+      <a href="../">返回首页</a> · 
+      <a href="index.html">MU25 战报</a> · 
+      <a href="../Topic-1-TokenEconomy/">主题一交互报告</a> · 
+      <a href="https://github.com/wilhelmjung/TokenResearch">GitHub 仓库</a>
+    </p>
+  </footer>
+
+  <!-- Chart & Interactive Script -->
+  <script>
+    // Initialize Latency Comparison Chart
+    const ctx = document.getElementById('latencyChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Jev (System One)', 'GPT-4o (JSON Mode)', 'Claude 3.5 (Structured)', 'DeepSeek-R1 (CoT 慢思考)'],
+        datasets: [
+          {
+            label: '首字时延 TTFT (ms)',
+            data: [75, 480, 520, 950],
+            backgroundColor: 'rgba(99, 102, 241, 0.85)',
+            borderRadius: 6
+          },
+          {
+            label: '自回归生成解码耗时 (ms)',
+            data: [0, 2400, 2100, 18500],
+            backgroundColor: 'rgba(236, 72, 153, 0.85)',
+            borderRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            stacked: true,
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: '#94a3b8', font: { family: '-apple-system' } }
+          },
+          y: {
+            stacked: true,
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: '#94a3b8' },
+            title: { display: true, text: '耗时 (ms)', color: '#64748b' }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: { color: '#cbd5e1', font: { size: 12 } }
+          },
+          tooltip: {
+            callbacks: {
+              afterBody: function(items) {
+                const total = items.reduce((a, b) => a + b.raw, 0);
+                return '端到端总时延: ' + total + ' ms';
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // Recalculate TCO Sandbox
+    function recalcTCO() {
+      const dailyReq = parseFloat(document.getElementById('dailyRequests').value) || 0;
+      const tokensPerReq = parseFloat(document.getElementById('avgTokens').value) || 0;
+      const s1FilterRatio = parseFloat(document.getElementById('s1Ratio').value) || 0.92;
+
+      // Legacy LLM: $3.00 / Mtok input, $15.00 / Mtok output (assume 120 output tokens)
+      const inputCostLegacy = (dailyReq * tokensPerReq / 1000000) * 3.00;
+      const outputCostLegacy = (dailyReq * 120 / 1000000) * 15.00;
+      const totalLegacyDaily = inputCostLegacy + outputCostLegacy;
+
+      // Jev Funnel:
+      // All requests go through Jev: input $0.042 / Mtok, output FREE
+      const jevDaily = (dailyReq * tokensPerReq / 1000000) * 0.042;
+      // Remaining (1 - s1FilterRatio) forward to complex LLM
+      const s2Requests = dailyReq * (1 - s1FilterRatio);
+      const s2InputCost = (s2Requests * tokensPerReq / 1000000) * 3.00;
+      const s2OutputCost = (s2Requests * 120 / 1000000) * 15.00;
+      const totalOptimizedDaily = jevDaily + s2InputCost + s2OutputCost;
+
+      const annualSavings = Math.max((totalLegacyDaily - totalOptimizedDaily) * 365, 0);
+      const pct = totalLegacyDaily > 0 ? ((1 - totalOptimizedDaily / totalLegacyDaily) * 100).toFixed(1) : 0;
+
+      document.getElementById('legacyCost').innerText = '$' + Math.round(totalLegacyDaily).toLocaleString();
+      document.getElementById('optimizedCost').innerText = '$' + Math.round(totalOptimizedDaily).toLocaleString();
+      document.getElementById('annualSavings').innerText = '$' + Math.round(annualSavings).toLocaleString();
+      document.getElementById('savingsPct').innerText = '-' + pct + '% 成本锐减';
+    }
+
+    // Initial run
+    recalcTCO();
+  </script>
+</body>
+</html>
