@@ -26,9 +26,11 @@ TokenResearch/
 │   ├── 8-智谱AI-GLM-5.3-Flash原生多模态架构.md # 智谱 GLM-5.3-Flash 原生全模态与混合注意力专题
 │   ├── 9-月之暗面-Kimi-K3-2.8T超大规模MoE与KDA架构.md # 月之暗面 2.8T MoE 与 KDA/Mooncake 架构专题
 │   ├── 10-IQ2-IQ4非线性格点与重要性矩阵混合量化技术.md # IQ2/IQ4 非线性格点与 I-Matrix 混合量化专题
-│   └── 11-TypeSafe-Jev-System-One-模型与Token经济学重构.md # Jev「System One 决策模型」Token 经济学与并行采样专题
+│   ├── 11-TypeSafe-Jev-System-One-模型与Token经济学重构.md # Jev「System One 决策模型」Token 经济学与并行采样专题
+│   └── 12-智谱AI-10万卡国产集群与Infra-Agent推理优化实战.md # 10万卡国产芯片集群、EPD解耦与Infra Agent高密反馈闭环实战
 │
 ├── blog/                        # 🔥 交互式博客与前沿极限优化战报
+│   ├── glm-infra-agent-100k-cluster.html     # 走向递归自我改进：智谱 10 万卡国产集群与 Infra Agent 推理优化全景战报
 │   ├── index.html                            # Qwen3.6-27B-FP8 在 MU25 裸机引擎上的极限优化全景战报
 │   ├── jev-system-one-tokenomics.html        # 终结自回归税：Jev「System One 决策模型」交互博文
 │   └── assets/                               # 性能图表、架构对比 SVG/PNG、AIME 2026 题目截图
@@ -78,3 +80,6 @@ TokenResearch/
    * **mu25 专属裸机引擎（Qwen3.6-27B-FP8 最新突破）**：在 4× NVIDIA L20 TP4 上首字延迟 (TTFT) 压至 **181.92 ms**（领先 vLLM 10.3%），生成速度 **56.8 tok/s**（领先 28.5%），AIME 2026 竞赛数学 **5/5 满分闭环**！详见 [**交互式 Web 战报**](blog/index.html)。
 5. **System 1 决策模型与并行采样革命**：
    * **TypeSafe Jev（ChatGPT 发明人 Diogo Almeida 创立）**：彻底放弃自回归文本生成，转为原生类型决策输出。引入 **RLCD 校准强化学习** 与 **并行采样器（Parallel Sampler）**，端到端时延压至 **70–250 ms**（提速 40–200x），**输出 Token 彻底免费**，数学级 0% 类型错误，构建 System 1 + System 2 双层漏斗使企业自动化 TCO 暴降 **90%+**。详见 [**Jev 交互式前沿博文**](blog/jev-system-one-tokenomics.html) 与 [**专题报告 11**](Topic-1-TokenEconomy/11-TypeSafe-Jev-System-One-模型与Token经济学重构.md)。
+6. **国产 10 万卡集群与 Infra Agent 自主闭环（智谱 AI 最新突破）**：
+   * **100,000+ 国产 AI 加速芯片集群**：生产级承载 GLM-5.3-Flash 全量流量，盲测代号 "Ox-Alpha" 6 天处理 **62 万亿 Tokens** 霸榜全球；
+   * **EPD 三层解耦与高密反馈（Dense Feedback）**：打破稀疏端到端指标黑盒，通过局部化、高时效、客观可验证反馈驱动 Infra Agent 在不到 2 周内实现 **3× 端到端吞吐提升**，修复 Triton `tl.dot` 精度灾难与 DeepEP GIL 并发死锁，单 Token 生产成本打平主流顶级 NVIDIA GPU。详见 [**智谱 10万卡战报**](blog/glm-infra-agent-100k-cluster.html) 与 [**专题报告 12**](Topic-1-TokenEconomy/12-智谱AI-10万卡国产集群与Infra-Agent推理优化实战.md)。

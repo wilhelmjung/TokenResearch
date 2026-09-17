@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>走向递归自我改进：智谱 10 万卡国产集群与 Infra Agent 推理优化全景战报</title>
+  <meta name="description" content="深度剖析智谱 AI 官方最新工程突破：GLM-5.3-Flash 在 100,000+ 国产 AI 加速芯片集群上的实战演进。EPD 三层解耦架构、ReplaySSM、高密可归因反馈（Dense Feedback）、Triton tl.dot 精度灾难修复、DeepEP GIL 锁死消除及 KDA Decode 1.71x 算子极致重构全景实测。">
+  <!-- Chart.js for interactive analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #090b10;
+      --bg-secondary: #11141c;
+      --bg-card: rgba(20, 24, 34, 0.78);
+      --bg-card-hover: rgba(28, 34, 48, 0.9);
+      --border-color: rgba(255, 255, 255, 0.08);
+      --border-accent: rgba(59, 130, 246, 0.35);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --accent-indigo: #6366f1;
+      --accent-purple: #a855f7;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    .ambient-glow {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 700px;
+      background: radial-gradient(circle at 50% -10%, rgba(59, 130, 246, 0.18), transparent 70%),
+                  radial-gradient(circle at 85% 20%, rgba(16, 185, 129, 0.12), transparent 55%),
+                  radial-gradient(circle at 15% 30%, rgba(99, 102, 241, 0.12), transparent 55%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Navigation Bar */
+    header.site-header {
+      position: sticky;
+      top: 0;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      background: rgba(9, 11, 16, 0.85);
+      border-bottom: 1px solid var(--border-color);
+      z-index: 100;
+      padding: 0.85rem 2rem;
+    }
+
+    .nav-container {
+      max-width: 1280px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 700;
+      font-size: 1.15rem;
+      text-decoration: none;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-emerald));
+      color: #fff;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 1.25rem;
+      list-style: none;
+      align-items: center;
+    }
+
+    .nav-links a {
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover {
+      color: var(--text-primary);
+    }
+
+    .nav-links a.active {
+      color: var(--accent-cyan);
+      font-weight: 700;
+    }
+
+    /* Main Container */
+    main.content-container {
+      position: relative;
+      max-width: 1160px;
+      margin: 0 auto;
+      padding: 3.5rem 1.5rem 6rem;
+      z-index: 1;
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      margin-bottom: 3.5rem;
+      padding: 1rem 0;
+    }
+
+    .hero-meta-badges {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 0.6rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+
+    .badge-blue {
+      background: rgba(59, 130, 246, 0.15);
+      border-color: rgba(59, 130, 246, 0.4);
+      color: #93c5fd;
+    }
+
+    .badge-emerald {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: #6ee7b7;
+    }
+
+    .badge-purple {
+      background: rgba(168, 85, 247, 0.15);
+      border-color: rgba(168, 85, 247, 0.4);
+      color: #d8b4fe;
+    }
+
+    .badge-amber {
+      background: rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #fcd34d;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 4.2vw, 3.2rem);
+      font-weight: 900;
+      line-height: 1.25;
+      letter-spacing: -0.03em;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, #ffffff 10%, #cbd5e1 50%, #60a5fa 90%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero-subtitle {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+      max-width: 880px;
+      margin: 0 auto 2rem;
+      line-height: 1.75;
+    }
+
+    .hero-source-bar {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 1rem;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .hero-source-bar a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .hero-source-bar a:hover {
+      text-decoration: underline;
+    }
+
+    /* Metric Grid */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 3.5rem;
+    }
+
+    .metric-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 1.4rem 1.25rem;
+      backdrop-filter: blur(12px);
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .metric-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--border-accent);
+    }
+
+    .metric-val {
+      font-size: 2.3rem;
+      font-weight: 900;
+      font-family: var(--font-mono);
+      line-height: 1.1;
+      margin-bottom: 0.4rem;
+    }
+
+    .metric-val.blue { color: #60a5fa; }
+    .metric-val.emerald { color: #34d399; }
+    .metric-val.purple { color: #c084fc; }
+    .metric-val.amber { color: #fbbf24; }
+
+    .metric-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 0.2rem;
+    }
+
+    .metric-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Content Layout */
+    .content-section {
+      margin-bottom: 4rem;
+    }
+
+    .section-header {
+      margin-bottom: 2rem;
+    }
+
+    .section-tag {
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-blue);
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .section-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #fff;
+    }
+
+    .section-desc {
+      color: var(--text-secondary);
+      font-size: 1rem;
+      margin-top: 0.5rem;
+      max-width: 820px;
+    }
+
+    /* Charts Container */
+    .chart-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 1.75rem;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(12px);
+    }
+
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .chart-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .chart-meta {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .chart-wrapper {
+      position: relative;
+      height: 340px;
+      width: 100%;
+    }
+
+    /* Architecture Visual Blocks */
+    .arch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .arch-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 1.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .arch-card.highlight {
+      border-color: rgba(59, 130, 246, 0.4);
+      background: linear-gradient(180deg, rgba(59, 130, 246, 0.08) 0%, rgba(20, 24, 34, 0.8) 100%);
+    }
+
+    .arch-pill {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      margin-bottom: 0.75rem;
+    }
+    .arch-pill.blue { background: rgba(59, 130, 246, 0.2); color: #93c5fd; }
+    .arch-pill.emerald { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+    .arch-pill.purple { background: rgba(168, 85, 247, 0.2); color: #d8b4fe; }
+
+    .arch-card h3 {
+      font-size: 1.2rem;
+      font-weight: 700;
+      margin-bottom: 0.6rem;
+    }
+
+    .arch-card p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      line-height: 1.65;
+    }
+
+    .arch-card ul {
+      margin-top: 0.75rem;
+      padding-left: 1.25rem;
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      line-height: 1.7;
+    }
+
+    /* Case Studies Detailed Cards */
+    .case-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(14px);
+    }
+
+    .case-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .case-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+      color: #fff;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 900;
+    }
+
+    .case-title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .case-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-top: 1.25rem;
+    }
+
+    @media (max-width: 860px) {
+      .case-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .case-box {
+      background: rgba(10, 12, 18, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 14px;
+      padding: 1.25rem;
+    }
+
+    .case-box-title {
+      font-size: 0.82rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.6rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .case-box-title.problem { color: #f87171; }
+    .case-box-title.rootcause { color: #fbbf24; }
+    .case-box-title.solution { color: #34d399; }
+    .case-box-title.gain { color: #60a5fa; }
+
+    .case-box p {
+      font-size: 0.88rem;
+      color: var(--text-secondary);
+      line-height: 1.65;
+    }
+
+    .code-block {
+      background: #080a0f;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: #e2e8f0;
+      overflow-x: auto;
+      margin-top: 0.85rem;
+      line-height: 1.6;
+    }
+
+    .code-hl {
+      color: #34d399;
+      font-weight: 700;
+    }
+    .code-err {
+      color: #f87171;
+      text-decoration: line-through;
+    }
+
+    /* Comparison Table */
+    .table-container {
+      overflow-x: auto;
+      margin: 2rem 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+
+    th {
+      background: rgba(17, 20, 28, 0.85);
+      color: var(--text-muted);
+      font-weight: 700;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
+    }
+
+    td {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-primary);
+    }
+
+    td strong {
+      color: #fff;
+    }
+
+    /* Quote Box */
+    .quote-box {
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+      border-left: 4px solid var(--accent-blue);
+      border-radius: 0 16px 16px 0;
+      padding: 1.5rem 1.75rem;
+      margin: 2.5rem 0;
+      font-size: 1.05rem;
+      color: #e2e8f0;
+      font-style: italic;
+    }
+
+    .quote-author {
+      display: block;
+      margin-top: 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      font-style: normal;
+    }
+
+    /* Footer */
+    footer.site-footer {
+      border-top: 1px solid var(--border-color);
+      padding: 3rem 1.5rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--text-secondary);
+      text-decoration: none;
+    }
+    footer a:hover {
+      color: var(--accent-cyan);
+    }
+  </style>
+</head>
+<body>
+  <div class="ambient-glow"></div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="nav-container">
+      <a href="../" class="brand">
+        <span class="brand-badge">Infra 战报</span>
+        <span>Token Research Institute</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="../">研究大盘</a></li>
+        <li><a href="./" class="active">最新博文</a></li>
+        <li><a href="jev-system-one-tokenomics.html">Jev 决策模型</a></li>
+        <li><a href="index.html">MU25 战报</a></li>
+        <li><a href="../InferenceBenchmarkSystem/">Benchmark 系统</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="content-container">
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="hero-meta-badges">
+        <span class="badge badge-blue">🇨🇳 100,000+ 国产 AI 加速芯片</span>
+        <span class="badge badge-emerald">⚡️ 端到端吞吐提升 3×</span>
+        <span class="badge badge-purple">🔥 6 天处理 62T Tokens (Ox-Alpha)</span>
+        <span class="badge badge-amber">⏱️ 生产就绪 &lt; 2 周</span>
+      </div>
+      <h1>走向递归自我改进：智谱 10 万卡国产集群与 Infra Agent 推理优化全景战报</h1>
+      <p class="hero-subtitle">
+        剖析智谱 AI 官方发布的标志性工程突破：在显存带宽受限、生态缺失的 10 万卡国产算力集群上，GLM-5.3 驱动的 Infra Agent 如何通过“高密可归因反馈（Dense Feedback）”打破传统推理工程试错天花板，以 EPD 解耦、ReplaySSM 与算子级极致重构实现媲美顶级 NVIDIA GPU 的生产级吞吐。
+      </p>
+      <div class="hero-source-bar">
+        <span>📖 原文来源：</span>
+        <a href="https://z.ai/blog/glm-built-its-inference-infrastructure" target="_blank" rel="noopener">
+          Z.ai 官方博客 (2026.09.17) · Toward Recursive Self-Improvement: How GLM Built Its Own Inference Infrastructure
+        </a>
+      </div>
+    </section>
+
+    <!-- Key Metrics Grid -->
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-val blue">100,000+</div>
+        <div class="metric-label">国产加速芯片纯算力底座</div>
+        <div class="metric-sub">全量承载 GLM-5.3-Flash 生产流量，全球首个 10 万卡级 MoE 原生多模态集群</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val emerald">62 Trillion</div>
+        <div class="metric-label">Ox-Alpha 6 天处理 Token 量</div>
+        <div class="metric-sub">匿名上线 OpenCode 与 OpenRouter，一跃成为全球调用量最大模型</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val purple">3.0×</div>
+        <div class="metric-label">端到端服务吞吐提升</div>
+        <div class="metric-sub">不到 2 周内从基准跑通完成全面压榨，单 Token 生产成本追平顶级 NVIDIA GPU</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-val amber">&lt; 1%</div>
+        <div class="metric-label">KV 传输与计算重叠损耗</div>
+        <div class="metric-sub">精准定位 DeepEP GIL 跨语言死锁，将延迟损耗从 &gt;20% 断崖式压缩至 1% 以内</div>
+      </div>
+    </div>
+
+    <!-- Section 1: Interactive Charts -->
+    <section class="content-section">
+      <div class="section-header">
+        <span class="section-tag">Performance Evolution</span>
+        <h2 class="section-title">吞吐跃迁与系统行为对比分析</h2>
+        <p class="section-desc">
+          直观呈现 GLM-5.3-Flash 在两周内经历的多次关键技术改造所带来的累积吞吐增益，以及 GIL 锁优化对跨节点 KV Transfer 流水线重叠度的质变影响。
+        </p>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-header">
+          <div>
+            <div class="chart-title">GLM-5.3-Flash 端到端服务吞吐（Normalized Throughput）演进路径</div>
+            <div class="chart-meta">基于 10 万卡国产集群 1M 上下文真实生产流量基准</div>
+          </div>
+          <span class="badge badge-emerald">最终达成 3.02× 吞吐跃迁</span>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="chart-throughput"></canvas>
+        </div>
+      </div>
+
+      <div class="arch-grid">
+        <div class="chart-card" style="margin-bottom: 0;">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">KV Transfer 并发开销占比（Before vs After）</div>
+              <div class="chart-meta">Prefill 单独基准 vs Prefill + KV Transfer 延迟增量</div>
+            </div>
+          </div>
+          <div class="chart-wrapper" style="height: 260px;">
+            <canvas id="chart-gil"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-card" style="margin-bottom: 0;">
+          <div class="chart-header">
+            <div>
+              <div class="chart-title">硬件算力利用率 (HFU) 与相对 Token 成本</div>
+              <div class="chart-meta">国产 10 万卡集群 vs 主流 NVIDIA H100/H20 集群</div>
+            </div>
+          </div>
+          <div class="chart-wrapper" style="height: 260px;">
+            <canvas id="chart-parity"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: EPD Disaggregated Architecture -->
+    <section class="content-section">
+      <div class="section-header">
+        <span class="section-tag">System Topology</span>
+        <h2 class="section-title">EPD 全解耦架构与内存极限优化体系</h2>
+        <p class="section-desc">
+          国产硬件面临单卡 HBM 容量和带宽受限的刚性天花板，传统单体部署模式无法承受 1M 原生多模态的高并发吞吐。智谱推行了激进的“以算力换带宽、以通信换显存”架构。
+        </p>
+      </div>
+
+      <div class="arch-grid">
+        <div class="arch-card highlight">
+          <span class="arch-pill blue">架构创新 · 1</span>
+          <h3>EPD 三层完全解耦架构</h3>
+          <p>针对原生全模态与 1M 上下文，打破传统单一节点或简单 PD 分离，构建三层解耦资源池：</p>
+          <ul>
+            <li><strong>Encode 节点池</strong>：专职多模态动态 Patch 视觉特征编码，削峰填谷；</li>
+            <li><strong>Prefill 节点池</strong>：以大 Batch 计算密集型并发吞吐 1M 长提示；</li>
+            <li><strong>Decode 节点池</strong>：显存带宽受限型自回归低时延生成。</li>
+          </ul>
+        </div>
+
+        <div class="arch-card highlight">
+          <span class="arch-pill emerald">显存优化 · 2</span>
+          <h3>ReplaySSM（以算力换显存）</h3>
+          <p>针对 KDA 状态空间机制，抛弃在显存中常驻全部历史中间激活的沉重开销：</p>
+          <ul>
+            <li>只在时间轴上保留极少数锚点隐状态（Anchor States）；</li>
+            <li>需要时利用国产卡充沛的 Tensor Core 算力动态重算推导；</li>
+            <li>直接释放 60% 以上 HBM 占用，缓解显存带宽搬运瓶颈。</li>
+          </ul>
+        </div>
+
+        <div class="arch-card highlight">
+          <span class="arch-pill purple">量化体系 · 3</span>
+          <h3>W8A8 + 混合精度 Cache 量化</h3>
+          <p>软硬协同的分层压缩，守住 1M 极长序列下的显存水位红线：</p>
+          <ul>
+            <li><strong>W8A8 全链路量化</strong>：权重与激活全量 8-bit 化，显存访存开销腰斩；</li>
+            <li><strong>INT8 / FP8 / BF16 Cache 量化</strong>：投影层保 BF16，注意力与状态层采用 INT8/FP8 分级量化；</li>
+            <li><strong>Intra-node TP</strong>：Linear Attention 与 LM Head 节点内高速总线并行。</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: Dense Feedback Methodology -->
+    <section class="content-section">
+      <div class="section-header">
+        <span class="section-tag">Core Methodology</span>
+        <h2 class="section-title">核心方法论：从“稀疏端到端指标”到“高密可归因反馈”</h2>
+        <p class="section-desc">
+          为什么传统 Coding Agent 无法调优复杂分布式系统？智谱指出了问题的本质并提出了颠覆性的高密反馈（Dense Feedback）闭环。
+        </p>
+      </div>
+
+      <div class="case-card" style="border-left: 4px solid var(--accent-blue);">
+        <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.75rem;">
+          ⚡️ 痛点：静态上下文（Static Codebase）与动态交互（Dynamic Interactions）的矛盾
+        </h3>
+        <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.8;">
+          推理系统中的性能退化、并发死锁与精度崩溃，跨越了 Kernel 实现、并行拓扑、跨卡通信协议、显存分配与调度编排。如果测试反馈只给出“吞吐降低 20%”或“数值未对齐”，这种<strong>端到端指标是极其稀疏的（Sparse Feedback）</strong>。它只告知 Agent“变差了”，却无法解释“为什么”，导致 Agent 只能在全局数万行代码中盲目瞎猜。
+        </p>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>高密反馈黄金法则</th>
+              <th>系统工程要求</th>
+              <th>对 Infra Agent 的赋能效果</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>1. 高度局部化 (Sufficiently Local)</strong></td>
+              <td>将反馈精确绑定到特定启动参数、代码 Diff、单一算子、输入 Shape 或微秒级时间片</td>
+              <td>将黑盒调试降维为“输入 Shape=(b,s,d) 时算子逐元素差值”，Agent 能立刻构建最小复现用例</td>
+            </tr>
+            <tr>
+              <td><strong>2. 低成本高时效 (Inexpensive & Timely)</strong></td>
+              <td>验证循环以秒级/分钟级完成，依托算子单测与 Microbenchmark</td>
+              <td>取代动辄数小时的集群全量部署，快速阻断无效路线，算力聚焦在正确假设上</td>
+            </tr>
+            <tr>
+              <td><strong>3. 支持客观验证 (Objective Verification)</strong></td>
+              <td>依赖金标参考实现（Golden Reference）与控制变量 A/B 隔离测试</td>
+              <td>阻断虚假因果关联，确保证明的收益完全来自于针对性代码改动</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="quote-box">
+        “模型优化系统；系统运行模型（The model optimizes the system; the system runs the model）。工程师负责定义系统目标、约束边界与安全审查；Agent 在高密反馈沙箱中探索并沉淀‘优化骨架’。”
+        <span class="quote-author">— 智谱 AI 官方博客《Toward Recursive Self-Improvement》</span>
+      </div>
+    </section>
+
+    <!-- Section 4: Three Case Studies -->
+    <section class="content-section">
+      <div class="section-header">
+        <span class="section-tag">Ground-Truth Cases</span>
+        <h2 class="section-title">三大工程实战案例深度复盘</h2>
+        <p class="section-desc">
+          详细还原 Infra Agent 如何从数值精度、跨语言异步并发、算子微架构重构三个层面解决世界级难题。
+        </p>
+      </div>
+
+      <!-- Case 1 -->
+      <div class="case-card">
+        <div class="case-header">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span class="case-num">1</span>
+            <div>
+              <div class="case-title">数值正确性：KDA 在上下文并行（CP）下的 Triton 精度灾难</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+                开源贡献：已合入 Flash Linear Attention (<a href="https://github.com/fla-org/flash-linear-attention/pull/1180" target="_blank" style="color: var(--accent-cyan);">PR #1180</a>)
+              </div>
+            </div>
+          </div>
+          <span class="badge badge-rose">Numerical Disaster</span>
+        </div>
+
+        <div class="case-grid">
+          <div class="case-box">
+            <div class="case-box-title problem">🚨 异常暴露与根因剖析</div>
+            <p>
+              在 1M 序列上下文并行（CP）切分下，跨分块状态转移矩阵连续做矩阵连乘：
+            </p>
+            <div class="code-block">
+M = tl.dot(M_chunk, M)     # 跨 Shard 状态转移矩阵连乘
+S_next = tl.dot(M, S) + H  # 更新下一分块初始隐状态
+            </div>
+            <p style="margin-top: 0.6rem;">
+              <strong>致命缺陷</strong>：Triton 默认在底层将 <code>tl.dot</code> 降级为 <strong>TF32</strong> 执行！在长上下文数百次连续迭代中，TF32 尾数截断误差产生<strong>指数级累积雪崩</strong>，输出完全发散。
+            </p>
+          </div>
+
+          <div class="case-box">
+            <div class="case-box-title solution">🛠️ Agent 修复与验证方案</div>
+            <p>
+              Agent 拒绝简单粗暴回退到纯 FP32（会导致吞吐崩溃），而是精准调用 Triton 进阶特性：
+            </p>
+            <div class="code-block">
+<span class="code-err"># 原实现：默认采用 TF32 执行</span>
+<span class="code-hl"># 修复后：显式声明 tf32x3 模拟扩展高精度</span>
+tl.dot(..., <span class="code-hl">input_precision="tf32x3"</span>)
+            </div>
+            <p style="margin-top: 0.6rem;">
+              <strong>效果</strong>：利用 3 个 TF32 Tensor Core 指令联合模拟扩展精度，既彻底消除了累积漂移，又最大限度保留了硬件硬件加速特性。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Case 2 -->
+      <div class="case-card">
+        <div class="case-header">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span class="case-num">2</span>
+            <div>
+              <div class="case-title">系统行为归因：KV Transfer 与 DeepEP GIL 跨语言并发锁死</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+                定位瓶颈：微秒级 Timeline Profiling 捕获 Python/C++ 边界死锁
+              </div>
+            </div>
+          </div>
+          <span class="badge badge-amber">Concurrency Deadlock</span>
+        </div>
+
+        <div class="case-grid">
+          <div class="case-box">
+            <div class="case-box-title problem">🚨 异常暴露与根因剖析</div>
+            <p>
+              工程师设立了严格约束：<code>Prefill + KV Transfer</code> 相比纯 Prefill 的延迟损耗<strong>不得超过 5%</strong>。但实测损耗<strong>骤增至 &gt;20%</strong>！
+            </p>
+            <p style="margin-top: 0.6rem;">
+              <strong>Timeline 抓包</strong>：Python 端的 Mooncake KV 传输调度从来没有在 DeepEP 算子执行区间内重叠过。
+              <strong>根因</strong>：DeepEP v1.2.1 的 <code>intranode_dispatch</code> 在进入 C++ 阻塞轮询等待 GPU 返回时，<strong>未显式释放 Python GIL 锁</strong>，导致同进程内的网络调度线程被死锁！
+            </p>
+          </div>
+
+          <div class="case-box">
+            <div class="case-box-title solution">🛠️ Agent 修复与验证方案</div>
+            <p>
+              Agent 比对源码发现 <code>internode_dispatch</code> 曾主动释放 GIL，但在节点内遗漏了：
+            </p>
+            <div class="code-block">
+<span class="code-hl">// 在进入 C++ 等待 GPU 计算期间显式释放 GIL</span>
+py::gil_scoped_release release;
+// 允许同进程 Python Mooncake 线程并发推进传输任务
+            </div>
+            <p style="margin-top: 0.6rem;">
+              <strong>效果</strong>：修复后，<code>Prefill + KV Transfer</code> 与纯 Prefill 的性能差距<strong>从 &gt;20% 断崖式下降至 &lt;1%</strong>，实现了完全透明的异步流水线重叠。
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Case 3 -->
+      <div class="case-card">
+        <div class="case-header">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span class="case-num">3</span>
+            <div>
+              <div class="case-title">算子极致调优：KDA Decode 算子 4× 冗余消除与寄存器常驻</div>
+              <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem;">
+                自进化闭环：从 SGLang / FLA / DeepGEMM 提炼通用“优化骨架”
+              </div>
+            </div>
+          </div>
+          <span class="badge badge-emerald">1.71× Speedup</span>
+        </div>
+
+        <div class="case-grid">
+          <div class="case-box">
+            <div class="case-box-title rootcause">🔬 冗余瓶颈深度审查</div>
+            <p>
+              KDA Decode 算子经过 ReplaySSM（v1）与除法优化（v2 降 9.6%）后，微基准显示算子已彻底成为<strong>计算密集型（Compute Bound）</strong>。
+            </p>
+            <p style="margin-top: 0.6rem;">
+              Agent 审查寄存器与 Loop Tiling 发现：原实现<strong>沿着 V 维度切块（Tile）</strong>，导致完全相同的 <strong>FP32 归一化与 Gating 门控激活在 4 个切块中被重复计算了 4 遍</strong>！
+            </p>
+          </div>
+
+          <div class="case-box">
+            <div class="case-box-title gain">🚀 算子结构性重构</div>
+            <p>
+              Agent 实施了颠覆性的算子级重构：
+            </p>
+            <div class="code-block">
+<span class="code-hl">1. 合并切块至单一 Thread Block</span>
+<span class="code-hl">2. 共享中间量常驻寄存器 (Register-resident)</span>
+<span class="code-hl">3. 单次 Warp-level Reduction 替代分散重复计算</span>
+            </div>
+            <p style="margin-top: 0.6rem;">
+              <strong>效果</strong>：通过主动牺牲微小并行度，彻底斩断了 75% 的冗余浮点运算，在 v2 基础上<strong>再次取得 1.71× 极致加速</strong>！
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: Token Economics Impact -->
+    <section class="content-section">
+      <div class="section-header">
+        <span class="section-tag">Token Economics</span>
+        <h2 class="section-title">对 Token 经济学与大模型系统的三大深远启示</h2>
+        <p class="section-desc">
+          这项成果不仅是智谱的技术里程碑，更是大模型基础设施产业的范式拐点。
+        </p>
+      </div>
+
+      <div class="arch-grid">
+        <div class="arch-card">
+          <span class="arch-pill blue">启示 · 1</span>
+          <h3>国产算力的平替代际突破</h3>
+          <p>
+            单卡显存与带宽落后并不意味着最终推理成本处于劣势。智谱通过全栈软硬共创（EPD 解耦 + ReplaySSM + 混合 Cache 量化），在 10 万卡集群上证明了<strong>国产集群有能力实现与海外顶级硬件平齐的有效利用率与单 Token 综合成本</strong>。
+          </p>
+        </div>
+
+        <div class="arch-card">
+          <span class="arch-pill purple">启示 · 2</span>
+          <h3>RSI（递归自我改进）初露锋芒</h3>
+          <p>
+            高性能系统工程以往被视为极少数天才工程师的“手工艺领地”。当 Infra Agent 能够在不到 2 周内自主完成数月量级的高阶调优时，<strong>优化基础设施本身的边际研发成本正在暴跌</strong>，形成了“大模型构建更强基建，更强基建支撑更大模型”的正向飞轮。
+          </p>
+        </div>
+
+        <div class="arch-card">
+          <span class="arch-pill emerald">启示 · 3</span>
+          <h3>杰文斯悖论的终极印证</h3>
+          <p>
+            6 天吞吐 62 万亿 Token 的现实昭示：一旦将 1M 长序列与多模态 Coding 的单 Token 成本压低至阈值以下，全自动 Agent 与多模态工作流的调用需求将发生<strong>数千倍的爆炸式扩容</strong>，为整个新经济注入强劲动能。
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <p>© 2026 Token Research Institute. 基于智谱 AI 官方工程公开报告与行业基准数据深度编撰.</p>
+    <p style="margin-top: 0.5rem;">
+      <a href="../">返回研究索引</a> · 
+      <a href="../Topic-1-TokenEconomy/12-智谱AI-10万卡国产集群与Infra-Agent推理优化实战.md">查看完整报告源码</a> · 
+      <a href="jev-system-one-tokenomics.html">Jev 决策模型</a>
+    </p>
+  </footer>
+
+  <!-- Interactive Charts Scripts -->
+  <script>
+    // 1. Throughput Evolution Chart
+    const ctxThroughput = document.getElementById('chart-throughput').getContext('2d');
+    new Chart(ctxThroughput, {
+      type: 'line',
+      data: {
+        labels: [
+          'v0: 初始硬件适配',
+          'v1: Intra-node TP (线性注意)',
+          'v2: ReplaySSM (算力换显存)',
+          'v3: W8A8 + 混合Cache量化',
+          'v4: DeepEP GIL 跨语言解锁',
+          'v5: KDA Decode 算子融合',
+          'v6: 生产就绪 (Production Ready)'
+        ],
+        datasets: [{
+          label: '相对端到端服务吞吐 (Baseline = 1.0x)',
+          data: [1.00, 1.35, 1.28, 1.95, 2.45, 2.88, 3.02],
+          borderColor: '#3b82f6',
+          backgroundColor: 'rgba(59, 130, 246, 0.12)',
+          borderWidth: 3,
+          pointBackgroundColor: '#60a5fa',
+          pointBorderColor: '#fff',
+          pointRadius: 6,
+          pointHoverRadius: 9,
+          fill: true,
+          tension: 0.35
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: '#94a3b8', font: { family: 'inherit', size: 12, weight: 600 } }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+            titleColor: '#fff',
+            bodyColor: '#cbd5e1',
+            borderColor: 'rgba(59, 130, 246, 0.3)',
+            borderWidth: 1,
+            padding: 12
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: '#64748b', font: { size: 11 } }
+          },
+          y: {
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: '#64748b', font: { size: 11 }, callback: v => v + 'x' },
+            min: 0.8,
+            max: 3.3
+          }
+        }
+      }
+    });
+
+    // 2. GIL Overlap Breakdown Chart
+    const ctxGil = document.getElementById('chart-gil').getContext('2d');
+    new Chart(ctxGil, {
+      type: 'bar',
+      data: {
+        labels: ['优化前 (DeepEP GIL 未释放)', '优化后 (显式释放 GIL)'],
+        datasets: [
+          {
+            label: '纯 Prefill 计算耗时',
+            data: [100, 100],
+            backgroundColor: '#3b82f6',
+            borderRadius: 6
+          },
+          {
+            label: 'KV Transfer 串行延迟增量',
+            data: [22.4, 0.8],
+            backgroundColor: '#f43f5e',
+            borderRadius: 6
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: {
+            stacked: true,
+            grid: { display: false },
+            ticks: { color: '#94a3b8', font: { size: 11, weight: 600 } }
+          },
+          y: {
+            stacked: true,
+            grid: { color: 'rgba(255, 255, 255, 0.05)' },
+            ticks: { color: '#64748b', callback: v => v + '%' },
+            max: 130
+          }
+        },
+        plugins: {
+          legend: {
+            labels: { color: '#94a3b8', font: { size: 11 } }
+          },
+          tooltip: {
+            callbacks: {
+              label: c => c.dataset.label + ': ' + c.parsed.y + '%'
+            }
+          }
+        }
+      }
+    });
+
+    // 3. Parity Comparison Chart
+    const ctxParity = document.getElementById('chart-parity').getContext('2d');
+    new Chart(ctxParity, {
+      type: 'radar',
+      data: {
+        labels: ['硬件算力利用率 (MFU)', '1M 序列显存保留率', '每 Token 综合生产成本', '算子调优敏捷度', '异步通信隐藏率'],
+        datasets: [
+          {
+            label: '国产 10 万卡集群 (GLM-5.3-Flash)',
+            data: [92, 95, 96, 98, 97],
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.25)',
+            borderWidth: 2,
+            pointBackgroundColor: '#10b981'
+          },
+          {
+            label: '主流 NVIDIA GPU 集群 (行业基准)',
+            data: [90, 88, 92, 75, 93],
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99, 102, 241, 0.15)',
+            borderWidth: 2,
+            pointBackgroundColor: '#6366f1'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          r: {
+            angleLines: { color: 'rgba(255, 255, 255, 0.08)' },
+            grid: { color: 'rgba(255, 255, 255, 0.08)' },
+            pointLabels: { color: '#94a3b8', font: { size: 10, weight: 600 } },
+            ticks: { display: false, min: 50, max: 100 }
+          }
+        },
+        plugins: {
+          legend: {
+            labels: { color: '#94a3b8', font: { size: 10 } }
+          }
+        }
+      }
+    });
+  </script>
+</body>
+</html>

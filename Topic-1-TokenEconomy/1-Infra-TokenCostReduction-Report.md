@@ -856,6 +856,7 @@ graph LR
 >   - [Topic-1-TokenEconomy/9-月之暗面-Kimi-K3-2.8T超大规模MoE与KDA架构.md](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/9-%E6%9C%88%E4%B9%8B%E6%9A%97%E9%9D%A2-Kimi-K3-2.8T%E8%B6%85%E5%A4%A7%E8%A7%84%E6%A8%A1MoE%E4%B8%8EKDA%E6%9E%B6%E6%9E%84.md) · Kimi-K3 2.8T MoE 架构深度分析
 >   - [Topic-1-TokenEconomy/10-IQ2-IQ4非线性格点与重要性矩阵混合量化技术.md](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/10-IQ2-IQ4%E9%9D%9E%E7%BA%BF%E6%80%A7%E6%A0%BC%E7%82%B9%E4%B8%8E%E9%87%8D%E8%A6%81%E6%80%A7%E7%9F%A9%E9%98%B5%E6%B7%B7%E5%90%88%E9%87%8F%E5%8C%96%E6%8A%80%E6%9C%AF.md) · IQ2/IQ4 混合量化与 I-Matrix 技术深度报告
 >   - [Topic-1-TokenEconomy/11-TypeSafe-Jev-System-One-模型与Token经济学重构.md](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/11-TypeSafe-Jev-System-One-%E6%A8%A1%E5%9E%8B%E4%B8%8EToken%E7%BB%8F%E6%B5%8E%E5%AD%A6%E9%87%8D%E6%9E%84.md) · TypeSafe Jev「System One 决策模型」Token 经济学重构与并行采样微架构深度解析
+>   - [Topic-1-TokenEconomy/12-智谱AI-10万卡国产集群与Infra-Agent推理优化实战.md](file:///Users/will/github/TokenResearch/Topic-1-TokenEconomy/12-%E6%99%BA%E8%B0%B1AI-10%E4%B8%87%E5%8D%A1%E5%9B%BD%E4%BA%A7%E9%9B%86%E7%BE%A4%E4%B8%8EInfra-Agent%E6%8E%A8%E7%90%86%E4%BC%98%E5%8C%96%E5%AE%9E%E6%88%98.md) · 智谱 AI 10 万卡国产集群推理 Infra 实战：EPD 分耦、Dense Feedback 与自进化工程
 > - 🌐 **行业规范与官方文献**：
 >   - NVIDIA GTC 2024/2025 技术公告 · Blackwell / DGX Spark (GB10) 规格
 >   - [Apple Mac Studio 官网技术规范](https://www.apple.com/mac-studio/) · M5/M6 Ultra 统一内存架构
