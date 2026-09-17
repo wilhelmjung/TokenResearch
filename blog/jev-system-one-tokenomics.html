@@ -923,6 +923,114 @@ print(decision.scores[<span style="color:#38bdf8;">"risk_score"</span>].score)  
           </p>
         </div>
 
+        <!-- Live Hugging Face Space Showcase: drinkmoonshine/parallel-constrained-decoding -->
+        <div style="margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.75rem;">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
+            <div>
+              <span style="background:rgba(56, 189, 248, 0.15);border:1px solid rgba(56, 189, 248, 0.4);color:#38bdf8;padding:0.2rem 0.6rem;border-radius:6px;font-size:0.75rem;font-weight:700;letter-spacing:0.04em;">在线可交互 DEMO</span>
+              <h4 style="color:#fff;font-size:1.15rem;font-weight:800;margin:0.4rem 0 0.2rem;">
+                🚀 Moonshine 开源决策引擎：Parallel Constrained Decision Engine
+              </h4>
+            </div>
+            <a href="https://huggingface.co/spaces/drinkmoonshine/parallel-constrained-decoding" target="_blank" style="display:inline-flex;align-items:center;gap:0.4rem;background:linear-gradient(135deg, #2563eb, #7c3aed);color:#fff;text-decoration:none;padding:0.5rem 1.1rem;border-radius:10px;font-weight:700;font-size:0.85rem;box-shadow:0 4px 14px rgba(124,58,237,0.3);transition:transform 0.2s;">
+              <span>⚡️ 打开 Hugging Face Space 实时体验</span>
+              <span>↗</span>
+            </a>
+          </div>
+
+          <p style="font-size:0.9rem;color:var(--text-secondary);line-height:1.6;margin-bottom:1rem;">
+            紧随开源社区的争鸣，开源组织 <strong>Moonshine（@drinkmoonshine）</strong> 正式在 Hugging Face Spaces 上线了完整的工业级可运行复现——<a href="https://huggingface.co/spaces/drinkmoonshine/parallel-constrained-decoding" target="_blank" style="color:#38bdf8;text-decoration:underline;"><code>drinkmoonshine/parallel-constrained-decoding</code></a>。该项目支持在 Nvidia ZeroGPU（A10G PyTorch）与 Apple Silicon（M4 Max MLX）双后端无缝运行，并攻克了开源极客初期未能解决的<strong>“多 Token 前缀树消歧（Token Tree Disambiguation）”</strong>与<strong>“最高 255 个高基数枚举”</strong>问题。
+          </p>
+
+          <!-- Benchmarks Table from Space -->
+          <div style="background:rgba(15,23,42,0.8);border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;margin-bottom:1.25rem;">
+            <div style="padding:0.75rem 1rem;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:0.8rem;font-weight:700;color:#a5b4fc;text-transform:uppercase;letter-spacing:0.04em;">📊 实测基准（Apple Silicon M4 Max · Qwen2.5-1.5B 4-bit）</span>
+              <span style="font-size:0.75rem;color:#34d399;font-weight:700;">100% 格式合法保证</span>
+            </div>
+            <div class="compare-table-container" style="margin:0;">
+              <table class="compare-table" style="font-size:0.82rem;">
+                <thead>
+                  <tr>
+                    <th>业务测试场景</th>
+                    <th>Schema 抽取字段数</th>
+                    <th>标准自回归解码耗时</th>
+                    <th>并行约束解码耗时</th>
+                    <th>端到端实测加速比</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>金融欺诈路由 (Fintech Fraud)</strong></td>
+                    <td>4 字段</td>
+                    <td>420 ms (120 tok/s)</td>
+                    <td style="color:#34d399;font-weight:700;">75 ms</td>
+                    <td><span style="background:rgba(16,185,129,0.2);color:#34d399;padding:0.15rem 0.45rem;border-radius:4px;font-weight:800;">5.6x FASTER</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>代码安全漏洞审计 (Security Audit)</strong></td>
+                    <td>4 字段</td>
+                    <td>380 ms (125 tok/s)</td>
+                    <td style="color:#34d399;font-weight:700;">68 ms</td>
+                    <td><span style="background:rgba(16,185,129,0.2);color:#34d399;padding:0.15rem 0.45rem;border-radius:4px;font-weight:800;">5.6x FASTER</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>海关关税 HS 编码分类 (Tariff Category)</strong></td>
+                    <td>1 字段 (<strong>255 候选基数</strong>)</td>
+                    <td>500 ms (118 tok/s)</td>
+                    <td style="color:#34d399;font-weight:700;">89 ms</td>
+                    <td><span style="background:rgba(16,185,129,0.2);color:#34d399;padding:0.15rem 0.45rem;border-radius:4px;font-weight:800;">5.6x FASTER</span></td>
+                  </tr>
+                  <tr>
+                    <td><strong>企业工单多维度分类 (Enterprise Support)</strong></td>
+                    <td><strong>28 字段</strong></td>
+                    <td>1,900 ms (130 tok/s)</td>
+                    <td style="color:#34d399;font-weight:700;">270 ms</td>
+                    <td><span style="background:rgba(16,185,129,0.2);color:#34d399;padding:0.15rem 0.45rem;border-radius:4px;font-weight:800;">7.0x FASTER</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Technical Breakdown Grid -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem;margin-bottom:1.25rem;">
+            <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:1rem;">
+              <div style="color:#38bdf8;font-weight:700;font-size:0.85rem;margin-bottom:0.35rem;">1. 广播式 KV-Cache 复制</div>
+              <p style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5;margin:0;">
+                利用 <code>batched_cache.batch_repeat_interleave(M)</code>，将上下文 Prefill 后的 KV 状态一次性广播至 $M$ 个并行字段槽位，零重复计算上下文。
+              </p>
+            </div>
+            <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:1rem;">
+              <div style="color:#f472b6;font-weight:700;font-size:0.85rem;margin-bottom:0.35rem;">2. Token Tree 前缀树消歧</div>
+              <p style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5;margin:0;">
+                针对包含多 Token 的候选枚举（如 <code>P0_CRITICAL</code>、<code>P1_HIGH</code>），通过前缀树在切片缓存上执行微秒级延续步，避免内存重新分配。
+              </p>
+            </div>
+            <div style="background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:1rem;">
+              <div style="color:#34d399;font-weight:700;font-size:0.85rem;margin-bottom:0.35rem;">3. 双后端全平台支持</div>
+              <p style="font-size:0.8rem;color:var(--text-secondary);line-height:1.5;margin:0;">
+                在 macOS 上通过 <code>mlx-lm</code> 榨干 M 系列芯片统一内存与 NPU 潜能；在 Linux / Docker / 云端自动降级至 <code>PyTorch + ZeroGPU</code>。
+              </p>
+            </div>
+          </div>
+
+          <!-- Embed Space Iframe Container -->
+          <div style="background:#090d16;border:1px solid rgba(255,255,255,0.12);border-radius:12px;overflow:hidden;">
+            <div style="padding:0.6rem 1rem;background:rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.06);display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:0.82rem;font-weight:600;color:#cbd5e1;">🖥️ Hugging Face Space 实时嵌入预览 (Live Gradio App)</span>
+              <a href="https://drinkmoonshine-parallel-constrained-decoding.hf.space" target="_blank" style="color:#38bdf8;font-size:0.78rem;text-decoration:none;">全屏打开 ↗</a>
+            </div>
+            <iframe
+              src="https://drinkmoonshine-parallel-constrained-decoding.hf.space"
+              style="width:100%;height:450px;border:none;background:#0f172a;"
+              title="Parallel Constrained Decision Engine Live Demo"
+              loading="lazy"
+              allow="accelerometer; ambient-light-sensor; autoplay; camera; clipboard-read; clipboard-write; encrypted-media; fullscreen; microphone;"
+            ></iframe>
+          </div>
+        </div>
+
       </div>
     </section>
 

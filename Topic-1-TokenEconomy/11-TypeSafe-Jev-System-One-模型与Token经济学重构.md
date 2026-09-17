@@ -246,6 +246,29 @@ Harsha 的 Demo 特意跑在配备 **Apple M4 芯片的 MacBook** 上，这一�
    * **云端 System 1（TypeSafe Jev）**：负责跨企业组织协同、多模态资产审计与百亿级合规规则仲裁；
    * **云端 System 2（DeepSeek-R1 / o3）**：当端侧或云端 System 1 检测到概率置信度落入模糊区间（如 $P \in [0.65, 0.85]$）时，触发长程思维链深度推理。
 
+### 4.6 工业级开源复现新标杆：Moonshine Parallel Constrained Decision Engine (HF Space)
+
+在社区对简单切片脚本进行反思后，开源组织 **Moonshine** 在 Hugging Face Spaces 上线了首个高完整度、生产就绪的开源并行约束决策引擎：[drinkmoonshine/parallel-constrained-decoding](https://huggingface.co/spaces/drinkmoonshine/parallel-constrained-decoding)。
+
+该引擎不仅在 Web 端提供了与自回归基线的实时对决测试沙盒，更在工程微架构上攻克了开源复现的两大死穴：
+
+#### 1. 核心架构突破
+* **KV-Cache 动态广播机制**：在 PyTorch 引擎中使用 `batched_cache.batch_repeat_interleave(M)`，将 Prefill 后的上下文注意力状态瞬间广播到全部 $M$ 个并行字段槽位，全过程无多余计算；
+* **前缀树消歧算法（Token Tree Disambiguation）**：彻底打破了简单 Logits 切片只能支持单 Token 的瓶颈。当用户定义的多候选词共享前缀时（例如 `P0_CRITICAL` 与 `P0_HIGH`），引擎利用切片缓存执行微秒级分步延续，支持高达 255 个高基数选项和布尔类型的毫秒级判别；
+* **双后端自适应调度（MLX + PyTorch）**：在 macOS 上无缝利用 Apple MLX 榨干 M 系列芯片统一内存与神经引擎；在 Linux/Docker 云端则自动适配 PyTorch 与 Nvidia ZeroGPU（A10G）。
+
+#### 2. Apple Silicon M4 Max 实测基准数据
+以 `mlx-community/Qwen2.5-1.5B-Instruct-4bit` 为底座的基准测试表明，并行约束解码在复杂工业场景下展现了惊人的加速比：
+
+| 业务测试场景 | 字段规模与基数 | 传统自回归耗时 (120 tok/s) | 并行约束解码耗时 | 端到端加速比 | 格式合法性 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **金融欺诈路由 (Fintech Fraud)** | 4 字段 (Enum/Bool) | 420 ms | **75 ms** | **5.6x** | 100% 绝对保证 |
+| **代码安全审计 (Security Audit)** | 4 字段 (漏洞评级) | 380 ms | **68 ms** | **5.6x** | 100% 绝对保证 |
+| **海关关税 HS 编码 (Tariff Code)** | 1 字段 (**255 候选高基数**) | 500 ms | **89 ms** | **5.6x** | 100% 绝对保证 |
+| **企业客服多维工单 (Enterprise)** | **28 字段复合抽取** | 1,900 ms | **270 ms** | **7.0x** | 100% 绝对保证 |
+
+实测数据表明：**字段越多、抽取结构越庞大，并行约束解码相比串行自回归的加速优势越呈指数级拉大（从 5.6x 跃升至 7.0x）**。这为开源模型在端侧（Apple M 系列）与云端私有化（ZeroGPU/A10G）构建 System 1 智能提供了最确凿的工程样板。
+
 ---
 
 ## 5. 数学级零幻觉与类型安全：结构化输出的终极形态
