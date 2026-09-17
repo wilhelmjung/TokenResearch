@@ -519,6 +519,7 @@
           <li><a href="#manifesto">造工业品不造神</a></li>
           <li><a href="#microarch">微架构革命</a></li>
           <li><a href="#rlcd">RLCD 校准</a></li>
+          <li><a href="#rlcd-debate" style="color:#c084fc;font-weight:700;">⚔️ 开源复现</a></li>
           <li><a href="#tokenomics">Token 经济学</a></li>
           <li><a href="#calculator">TCO 测算器</a></li>
           <li><a href="glm-infra-agent-100k-cluster.html" style="color:#60a5fa;font-weight:700;">🇨🇳 智谱10万卡战报</a></li>
@@ -811,6 +812,117 @@ print(decision.scores[<span style="color:#38bdf8;">"risk_score"</span>].score)  
     execute_instant_refund()  <span style="color:#64748b;"># 95%+ 真实概率，全自动放行</span>
 <span style="color:#f472b6;">else</span>:
     route_to_human_auditor()  <span style="color:#64748b;"># 低于阈值，优雅回退到人工坐席</span></code></pre>
+      </div>
+
+      <!-- 3.1 Community Replication Debate: Qwen-2.5-1B-RLCD -->
+      <div class="card-panel" id="rlcd-debate" style="margin-top:2.5rem; border: 1px solid rgba(168, 85, 247, 0.4); background: linear-gradient(135deg, rgba(168, 85, 247, 0.06), rgba(15, 23, 42, 0.96)); border-radius: 16px; padding: 2rem; box-shadow: 0 10px 30px rgba(0,0,0,0.35);">
+        
+        <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1.25rem;">
+          <span style="background:linear-gradient(135deg,#a855f7,#ec4899);color:#fff;padding:0.25rem 0.75rem;border-radius:9999px;font-size:0.78rem;font-weight:800;letter-spacing:0.05em;text-transform:uppercase;">开源风暴</span>
+          <h3 style="font-size:1.25rem;font-weight:800;color:#fff;margin:0;">
+            开源社区的“2小时复现”挑衅：Qwen-2.5-1B-RLCD 与 Jev 的技术脱水对决
+          </h3>
+        </div>
+
+        <p style="font-size:0.95rem;line-height:1.7;color:var(--text-secondary);margin-bottom:1.25rem;">
+          在 TypeSafe 发布 Jev 并引发轰动后不久，知名开源极客 <strong>Harsha Gundala</strong>（@harshagundal）在推特与 Hugging Face 上公开发布了开源项目 <code>harshatheg/Qwen-2.5-1B-RLCD</code>，并留下了一句极具火药味的宣言：
+        </p>
+
+        <!-- Tweet Quote Box -->
+        <div style="background:#090d16;border:1px solid rgba(255,255,255,0.15);border-radius:14px;padding:1.4rem 1.6rem;margin-bottom:1.5rem;position:relative;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;flex-wrap:wrap;gap:0.5rem;">
+            <div style="display:flex;align-items:center;gap:0.6rem;">
+              <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#38bdf8,#818cf8);display:flex;align-items:center;justify-content:center;font-weight:800;color:#000;font-size:0.9rem;">HG</div>
+              <div>
+                <div style="font-weight:700;color:#fff;font-size:0.92rem;display:flex;align-items:center;gap:0.3rem;">
+                  Harsha Gundala <span style="color:#38bdf8;font-size:0.8rem;">☑️</span>
+                </div>
+                <div style="color:#64748b;font-size:0.78rem;">@harshagundal · Hugging Face Open Source</div>
+              </div>
+            </div>
+            <a href="https://huggingface.co/harshatheg/Qwen-2.5-1B-RLCD" target="_blank" style="color:#a5b4fc;font-size:0.8rem;text-decoration:none;border:1px solid rgba(99,102,241,0.4);padding:0.25rem 0.65rem;border-radius:6px;background:rgba(99,102,241,0.12);display:inline-flex;align-items:center;gap:0.35rem;">🤗 harshatheg/Qwen-2.5-1B-RLCD</a>
+          </div>
+          <blockquote style="margin:0;font-size:0.95rem;line-height:1.65;color:#e2e8f0;font-style:italic;border-left:3px solid #38bdf8;padding-left:1rem;">
+            “They were building in stealth for 2 years, I was building in stealth for 2 hours…<br/><br/>
+            Happy to open source <strong>Qwen-2.5-1B-RLCD</strong>, 5x faster on-device inference for JSON workloads that need to be type-safe.<br/><br/>
+            ⚡️Demo below on a <strong>M4 MacBook</strong>⚡️<br/><br/>
+            <strong>every LLM has the ability to efficiently batch inference every key of a JSON at the same time and generate probabilities from a set of possible categories.</strong> No new training required, but it’s easy to optimize if you need! On hugging face now!”
+          </blockquote>
+        </div>
+
+        <h4 style="color:#f472b6;font-size:1.05rem;font-weight:700;margin-top:1.5rem;margin-bottom:0.75rem;">
+          🔍 技术同构性：开源极客是如何在 2 小时内“祛魅”Jev 的？
+        </h4>
+        <p style="font-size:0.92rem;line-height:1.7;color:var(--text-secondary);margin-bottom:1rem;">
+          Harsha 的开源复现与推文，精准戳破了“全新自研模型架构”的神话外壳，也彻底呼应了我们在前文架构蓝图中所展示的机理：
+        </p>
+        <ul style="font-size:0.9rem;color:#cbd5e1;line-height:1.7;padding-left:1.25rem;margin-bottom:1.5rem;">
+          <li><strong>并行约束解码的物理通用性</strong>：任何标准因果解码器（Causal Decoder LLM，如 Qwen-2.5-1B/7B）在预填充（Prefill）一次输入上下文之后，其 KV-Cache 已经保留了文档的全部语义；</li>
+          <li><strong>共享 KV-Cache + 后缀并行送入</strong>：只需将 JSON Schema 中各个待抽取的 Key/问句（如 <code>risk_level:</code>）并行批处理送入同一个 Transformer 解码步；</li>
+          <li><strong>152k 词表切片与局部 Softmax</strong>：直接读取最后一个 Token 在未归一化 LM Head 上的 Logits，只截取预定义的候选集合（如 <code>HIGH</code>, <code>MEDIUM</code>, <code>LOW</code>），其余全部 Mask 掉，局部做一次 Softmax。无需生成大括号、引号，也不用自回归串行采样！</li>
+          <li><strong>Apple Silicon M4 + MLX 的端侧奇迹</strong>：基于 Apple MLX 框架与 M4 芯片统一内存（UMA），1B 模型仅占用不到 2GB 统一显存，端到端延迟低至 <strong>10~25ms</strong>，吞吐直接提升 <strong>5x~7x</strong>，且<strong>完全本地离线运行，0 API 费用、0 隐私外泄</strong>！</li>
+        </ul>
+
+        <h4 style="color:#38bdf8;font-size:1.05rem;font-weight:700;margin-top:1.5rem;margin-bottom:0.75rem;">
+          ⚖️ 技术脱水：开源 2 小时 Logits 掩码 vs 工业级 2 年 RLCD 的残酷分水岭
+        </h4>
+        <p style="font-size:0.92rem;line-height:1.7;color:var(--text-secondary);margin-bottom:1rem;">
+          开源脚本确实跑通了“并行约束解码”的端侧 Demo，但这是否意味着 TypeSafe 团队两年的全职研发只是噱头？<strong>绝非如此。</strong> 事实上，Harsha 声称的 <em>“No new training required”</em> 恰恰暴露出业余 Demo 与工业级生产系统之间的致命鸿沟：
+        </p>
+
+        <div class="compare-table-container" style="margin:1.25rem 0;">
+          <table class="compare-table">
+            <thead>
+              <tr>
+                <th style="width:20%;">对比维度</th>
+                <th style="width:40%;">Qwen-2.5-1B-RLCD（开源 2 小时复现）</th>
+                <th style="width:40%;">TypeSafe Jev（工业级 2 年自研沉淀）</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>底层计算机制</strong></td>
+                <td>未微调的基座模型 LM Head 词表切片 + 局部 Softmax</td>
+                <td>专用 Typed Head（Choice / Score / Noul）原生多头并行输出</td>
+              </tr>
+              <tr>
+                <td><strong>置信度校准 (ECE)</strong></td>
+                <td><span style="color:#f87171;font-weight:700;">严重失真（伪概率）</span><br/><small style="color:#94a3b8;">未经校准的 Logits 受 Unigram 词频先验污染，极易打出 0.999 的虚妄高分</small></td>
+                <td><span style="color:#34d399;font-weight:700;">数学级校准（认识论诚实）</span><br/><small style="color:#94a3b8;">通过 Brier Score & ECE 强化学习，输出 85% 严格收敛于统计胜率 85%</small></td>
+              </tr>
+              <tr>
+                <td><strong>候选词基数限制</strong></td>
+                <td><span style="color:#fbbf24;font-weight:700;">严格受限（仅支持单 Token）</span><br/><small style="color:#94a3b8;">若枚举选项由多个 Token 组成（如 <code>logistics_delay</code>），单步切片立即失效</small></td>
+                <td><span style="color:#34d399;font-weight:700;">高基数原生支持</span><br/><small style="color:#94a3b8;">原生支持高达 255 个任意复杂的选项枚举与连续评分区间</small></td>
+              </tr>
+              <tr>
+                <td><strong>长上下文语义容量</strong></td>
+                <td><span style="color:#f87171;font-weight:700;">1B 小模型表征坍塌</span><br/><small style="color:#94a3b8;">面对 50 页法律协议、复杂医疗病历或反讽长文，1B 注意力表征极易失序</small></td>
+                <td><span style="color:#34d399;font-weight:700;">百亿级高维语义蒸馏</span><br/><small style="color:#94a3b8;">保留大参数模型对隐晦转折与长程因果关系的深层抽取能力</small></td>
+              </tr>
+              <tr>
+                <td><strong>生产自动化可用性</strong></td>
+                <td><span style="color:#f87171;font-weight:700;">仅限玩具与极客 Demo</span><br/><small style="color:#94a3b8;">工程师不敢在代码中写 <code>if prob > 0.95: auto_refund()</code>（会造成企业资金误放）</small></td>
+                <td><span style="color:#34d399;font-weight:700;">生产级系统闭环组件</span><br/><small style="color:#94a3b8;">具备严格 SLA 与合规防御能力，可放心作为企业级自动化第一道守门网关</small></td>
+              </tr>
+              <tr>
+                <td><strong>最佳落地阵地</strong></td>
+                <td><span style="color:#38bdf8;font-weight:700;">端侧边缘（On-Device Edge）</span><br/><small style="color:#94a3b8;">MacBook/iPhone 本地轻量脱敏、UI 动作路由、离线通知分类</small></td>
+                <td><span style="color:#a855f7;font-weight:700;">企业级云端集群（Cloud System 1）</span><br/><small style="color:#94a3b8;">企业风控、海量工单合规审批、替代/增强 vLLM-SR 网关调度</small></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div style="background:rgba(239, 68, 68, 0.08);border:1px solid rgba(239, 68, 68, 0.25);border-radius:10px;padding:1rem 1.25rem;margin-top:1.25rem;">
+          <h5 style="color:#f87171;font-size:0.92rem;margin-bottom:0.4rem;font-weight:700;">
+            ⚠️ 关键结论：“无需新训练（No New Training Required）”是最大谎言
+          </h5>
+          <p style="font-size:0.85rem;color:#cbd5e1;line-height:1.6;margin:0;">
+            语言模型的未校准输出层<strong>本质上不是合法的分类器</strong>。如果两个选项在自然语言语料中的基频相差 10 倍，原始 Logits 就会被严重偏置。在 <code>Qwen-2.5-1B-RLCD</code> 中算出的所谓“0.95 概率”，可能在现实测试集中连 60% 的准确率都达不到。这正是为什么真实业务系统<strong>绝不敢仅凭一段 2 小时写的切片脚本就将自动化控制权交给它</strong>。Jev 研发 2 年的真正技术壁垒，是利用 RLCD 彻底消除了模型“过度自信”的幻觉，赋予了概率以严谨的工程度量价值。
+          </p>
+        </div>
+
       </div>
     </section>
 
