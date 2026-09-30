@@ -27,12 +27,14 @@ TokenResearch/
 │   ├── 9-月之暗面-Kimi-K3-2.8T超大规模MoE与KDA架构.md # 月之暗面 2.8T MoE 与 KDA/Mooncake 架构专题
 │   ├── 10-IQ2-IQ4非线性格点与重要性矩阵混合量化技术.md # IQ2/IQ4 非线性格点与 I-Matrix 混合量化专题
 │   ├── 11-TypeSafe-Jev-System-One-模型与Token经济学重构.md # Jev「System One 决策模型」Token 经济学与并行采样专题
-│   └── 12-智谱AI-10万卡国产集群与Infra-Agent推理优化实战.md # 10万卡国产芯片集群、EPD解耦与Infra Agent高密反馈闭环实战
+│   ├── 12-智谱AI-10万卡国产集群与Infra-Agent推理优化实战.md # 10万卡国产芯片集群、EPD解耦与Infra Agent高密反馈闭环实战
+│   └── 13-MLC-TIRx-Harness-Agentic-GPU-Kernel优化.md # TIRx Harness 编译器环境与 Agent GPU Kernel 优化专题
 │
 ├── blog/                        # 🔥 交互式博客与前沿极限优化战报
 │   ├── glm-infra-agent-100k-cluster.html     # 走向递归自我改进：智谱 10 万卡国产集群与 Infra Agent 推理优化全景战报
 │   ├── index.html                            # Qwen3.6-27B-FP8 在 MU25 裸机引擎上的极限优化全景战报
 │   ├── jev-system-one-tokenomics.html        # 终结自回归税：Jev「System One 决策模型」交互博文
+│   ├── tirx-harness-agentic-gpu-programming.html # TIRx Harness：Agentic GPU Kernel 优化的编译器环境范式
 │   └── assets/                               # 性能图表、架构对比 SVG/PNG、AIME 2026 题目截图
 │
 ├── hardware/                    # 🚀 算力硬件、自研 ASIC 与 UMA 算子优化专题
@@ -62,6 +64,8 @@ TokenResearch/
 ---
 
 ## 🌟 核心量化发现与突破
+
+> 🧩 **最新补充**：MLC **TIRx Harness** 用 TIRx-lite、Kernel Zoo、Sync/Race/NumSim 与 KCoral 远程基准压缩 Agent 写 GPU kernel 的不确定性；KDA forward/backward 分别达到 **2.94x / 6.84x** kernel-time 加速，但不能直接折算为端到端 serving 降本。详见 [**TIRx Harness 博客**](blog/tirx-harness-agentic-gpu-programming.html) 与 [**专题报告 13**](Topic-1-TokenEconomy/13-MLC-TIRx-Harness-Agentic-GPU-Kernel优化.md)。
 
 1. **宏观爆发与 Jevons 悖论**：
    * 中国日均 Token 消耗量 2 年暴增 1400 倍突破 140 万亿；J.P. Morgan 预测 2030 年全球日均消耗达 3,900 万亿；

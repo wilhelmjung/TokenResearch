@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TIRx Harness：Agentic GPU Kernel 优化的编译器环境范式</title>
+  <meta name="description" content="MLC TIRx Harness 深度解读：TIRx-lite、Sync/Race/NumSim、Kernel Zoo 与 KCoral 远程基准如何降低 Agent 写 Blackwell GPU kernel 的不确定性；KDA forward 2.94x、KDA backward 6.84x 的数据边界与 Token 经济学启示。">
+  <style>
+    :root {
+      --bg: #080b10;
+      --surface: #101521;
+      --surface-2: #151d2b;
+      --line: rgba(255, 255, 255, 0.09);
+      --text: #f1f5f9;
+      --muted: #93a3b8;
+      --subtle: #68778c;
+      --cyan: #22d3ee;
+      --emerald: #34d399;
+      --amber: #fbbf24;
+      --rose: #fb7185;
+      --violet: #a78bfa;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-width: 320px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      line-height: 1.72;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a { color: var(--cyan); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    img { display: block; max-width: 100%; }
+
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--line);
+      background: rgba(8, 11, 16, 0.92);
+      backdrop-filter: blur(16px);
+    }
+
+    .header-inner {
+      width: min(1180px, 100% - 2rem);
+      margin: auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      min-height: 64px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+      font-weight: 750;
+      color: var(--text);
+      white-space: nowrap;
+    }
+
+    .brand-mark {
+      padding: .22rem .5rem;
+      border: 1px solid rgba(34, 211, 238, .45);
+      border-radius: 6px;
+      color: var(--cyan);
+      background: rgba(34, 211, 238, .1);
+      font-family: var(--mono);
+      font-size: .74rem;
+      font-weight: 800;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 1.1rem;
+      font-size: .88rem;
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .nav::-webkit-scrollbar { display: none; }
+    .nav a { color: var(--muted); white-space: nowrap; }
+    .nav a:hover { color: var(--text); text-decoration: none; }
+    .nav-strong { color: var(--amber) !important; font-weight: 700; }
+
+    main {
+      position: relative;
+      width: min(1180px, 100% - 2rem);
+      margin: auto;
+      padding: 3.2rem 0 5rem;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.08fr) minmax(280px, .92fr);
+      gap: 2.5rem;
+      align-items: end;
+      padding-bottom: 3rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin-bottom: 1rem;
+      color: var(--cyan);
+      font-family: var(--mono);
+      font-size: .78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 780px;
+      font-size: clamp(2.1rem, 4vw, 3.65rem);
+      line-height: 1.1;
+      font-weight: 830;
+      letter-spacing: 0;
+    }
+
+    .hero p {
+      max-width: 720px;
+      margin-top: 1.15rem;
+      color: var(--muted);
+      font-size: 1.05rem;
+    }
+
+    .source {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: .6rem;
+      margin-top: 1.4rem;
+      color: var(--subtle);
+      font-size: .84rem;
+    }
+
+    .source a {
+      padding: .35rem .65rem;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--text);
+      background: rgba(255, 255, 255, .03);
+    }
+
+    .hero-panel {
+      padding: 1.2rem;
+      border: 1px solid rgba(52, 211, 153, .3);
+      border-radius: 8px;
+      background: linear-gradient(145deg, rgba(52, 211, 153, .11), rgba(34, 211, 238, .06));
+    }
+
+    .hero-panel strong { display: block; margin-bottom: .55rem; font-size: 1.05rem; }
+    .hero-panel p { margin: 0; font-size: .93rem; color: #d7e1ec; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: .8rem;
+      margin: 1.8rem 0 4rem;
+    }
+
+    .stat {
+      min-height: 142px;
+      padding: 1rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .stat-value {
+      font-family: var(--mono);
+      font-size: clamp(1.65rem, 3vw, 2.25rem);
+      font-weight: 820;
+      line-height: 1.1;
+    }
+
+    .stat-label { margin-top: .45rem; font-weight: 720; font-size: .9rem; }
+    .stat-note { margin-top: .25rem; color: var(--subtle); font-size: .78rem; line-height: 1.5; }
+    .cyan { color: var(--cyan); }
+    .emerald { color: var(--emerald); }
+    .amber { color: var(--amber); }
+    .rose { color: var(--rose); }
+
+    section { margin-bottom: 4rem; }
+    .section-head { max-width: 780px; margin-bottom: 1.6rem; }
+    .section-kicker { color: var(--violet); font-family: var(--mono); font-size: .76rem; font-weight: 800; }
+    h2 { margin-top: .4rem; font-size: clamp(1.5rem, 2.7vw, 2.1rem); line-height: 1.25; letter-spacing: 0; }
+    .section-head p { margin-top: .6rem; color: var(--muted); }
+
+    .figure {
+      padding: .9rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .figure figcaption {
+      margin-top: .65rem;
+      color: #475569;
+      font-size: .82rem;
+      line-height: 1.55;
+    }
+
+    .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .8rem; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; }
+    .grid-2 > *, .grid-3 > *, .grid-4 > * { min-width: 0; }
+
+    .tile {
+      min-width: 0;
+      padding: 1.05rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .tile h3 { display: flex; align-items: center; gap: .55rem; font-size: 1rem; line-height: 1.4; }
+    .tile p { margin-top: .6rem; color: var(--muted); font-size: .9rem; }
+    .tile code { font-family: var(--mono); font-size: .82em; color: #c9d6e5; }
+
+    .dot { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: currentColor; }
+
+    .bench-panel {
+      display: grid;
+      grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
+      gap: .8rem;
+      align-items: start;
+    }
+
+    .bars {
+      padding: 1.1rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    .bar-row { margin-bottom: 1rem; }
+    .bar-row:last-child { margin-bottom: 0; }
+    .bar-meta { display: flex; justify-content: space-between; gap: 1rem; font-size: .82rem; }
+    .bar-meta strong { white-space: nowrap; }
+    .bar-track { height: 10px; margin-top: .4rem; border-radius: 999px; background: rgba(255,255,255,.07); overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: inherit; background: currentColor; }
+
+    .notice {
+      margin-top: .8rem;
+      padding: 1rem;
+      border-left: 3px solid var(--amber);
+      border-radius: 6px;
+      background: rgba(251, 191, 36, .09);
+      color: #e8eef6;
+      font-size: .9rem;
+    }
+
+    .table-wrap { max-width: 100%; overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+    table { width: 100%; min-width: 680px; border-collapse: collapse; background: var(--surface); font-size: .88rem; }
+    th, td { padding: .8rem .9rem; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { color: #dbe5ef; background: rgba(255,255,255,.04); white-space: nowrap; }
+    td { color: var(--muted); }
+    tr:last-child td { border-bottom: 0; }
+    td:first-child { color: var(--text); font-weight: 700; }
+
+    .formula {
+      max-width: 100%;
+      padding: 1.1rem;
+      border: 1px solid rgba(34, 211, 238, .28);
+      border-radius: 8px;
+      background: rgba(34, 211, 238, .07);
+      font-family: var(--mono);
+      font-size: .86rem;
+      overflow-x: auto;
+      white-space: nowrap;
+    }
+
+    details {
+      margin-top: .8rem;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+    }
+
+    summary {
+      padding: .95rem 1rem;
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 720;
+    }
+    summary:hover { color: var(--amber); }
+    details div { padding: 0 1rem 1rem; color: var(--muted); font-size: .9rem; }
+    details ul { margin-left: 1.15rem; }
+
+    .sources { padding-top: 2rem; border-top: 1px solid var(--line); }
+    .sources ol { margin-left: 1.25rem; color: var(--muted); font-size: .88rem; }
+    .sources li { margin-bottom: .45rem; }
+
+    footer { border-top: 1px solid var(--line); background: #06080c; color: var(--subtle); font-size: .82rem; }
+    .footer-inner { width: min(1180px, 100% - 2rem); margin: auto; padding: 1.5rem 0; }
+    .footer-links { display: flex; flex-wrap: wrap; gap: .65rem; }
+    .footer-links a { color: var(--muted); }
+
+    @media (max-width: 960px) {
+      .hero, .bench-panel { grid-template-columns: 1fr; }
+      .stats, .grid-4, .grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    @media (max-width: 620px) {
+      .header-inner { align-items: flex-start; flex-direction: column; padding: .8rem 0; }
+      .nav { width: 100%; justify-content: flex-start; }
+      main { padding-top: 2rem; }
+      .stats, .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+      h1 { font-size: 2.05rem; }
+      .source a { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="header-inner">
+      <a class="brand" href="../"><span class="brand-mark">TIRx</span><span>Token Research Institute</span></a>
+      <nav class="nav" aria-label="页面导航">
+        <a href="#architecture">架构</a>
+        <a href="#benchmark">基准</a>
+        <a href="#tactics">优化案例</a>
+        <a href="#tokenomics">Token 经济学</a>
+        <a href="../Topic-1-TokenEconomy/13-MLC-TIRx-Harness-Agentic-GPU-Kernel优化.md">研究报告</a>
+        <a class="nav-strong" href="glm-infra-agent-100k-cluster.html">智谱 10 万卡战报</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <div>
+        <p class="eyebrow">Compiler Harness · Agent Kernel Loop</p>
+        <h1 id="page-title">TIRx Harness：让 Agent 少猜编译器，多做有效优化</h1>
+        <p>
+          MLC 把 GPU kernel 生成从“让 Agent 写代码”推进到“给 Agent 一个可控的编译器环境”：TIRx-lite 贴近 PTX 语义，正确性工具提前暴露同步与竞态，Kernel Zoo 保留可复用实现，KCoral 用独占远程 GPU 保证测量可信。
+        </p>
+        <div class="source">
+          <span>来源</span>
+          <a href="https://blog.mlc.ai/2026/09/29/tirx-harness-an-open-compiler-harness-for-agentic-gpu-programming" target="_blank" rel="noopener">MLC 博客 · 2026.09.29</a>
+          <a href="https://github.com/mlc-ai/TIRx-harness" target="_blank" rel="noopener">TIRx-harness</a>
+          <a href="https://github.com/mlc-ai/tirx-kernels" target="_blank" rel="noopener">tirx-kernels</a>
+        </div>
+      </div>
+      <aside class="hero-panel">
+        <strong>一句话判断</strong>
+        <p>
+          TIRx Harness 提高的是 Agent 搜索 kernel 的 token 效率与 GPU 试错效率；公开加速仍是 kernel time，不等于端到端 serving 延迟，更不能直接折算为线上每 Token 成本下降。
+        </p>
+      </aside>
+    </section>
+
+    <div class="stats" aria-label="关键数据">
+      <article class="stat">
+        <div class="stat-value cyan">2.94x</div>
+        <div class="stat-label">KDA Forward</div>
+        <div class="stat-note">几何平均，对比 FlashKDA；不是跨 family 总分。</div>
+      </article>
+      <article class="stat">
+        <div class="stat-value emerald">6.84x</div>
+        <div class="stat-label">KDA Backward</div>
+        <div class="stat-note">几何平均，对比 FLA chunk backward。</div>
+      </article>
+      <article class="stat">
+        <div class="stat-value amber">60+</div>
+        <div class="stat-label">Kernel Zoo</div>
+        <div class="stat-note">保留具体实现、输入、正确性检查与基准入口。</div>
+      </article>
+      <article class="stat">
+        <div class="stat-value rose">Blackwell</div>
+        <div class="stat-label">主要目标平台</div>
+        <div class="stat-note">调优集中在 sm_100a；部分 kernel 支持 sm_103a / sm_107a。</div>
+      </article>
+    </div>
+
+    <section id="architecture" aria-labelledby="architecture-title">
+      <div class="section-head">
+        <p class="section-kicker">Architecture</p>
+        <h2 id="architecture-title">四层环境：压缩 Agent 的不确定性</h2>
+        <p>Agent 的主要消耗不是“生成一段 CUDA”，而是反复预测编译行为、诊断偶发错误、重建已知优化知识，以及在被污染的 GPU 计时里选择错误方向。</p>
+      </div>
+      <figure class="figure">
+        <img src="https://blog.mlc.ai/img/tirx-harness/overview.png" alt="TIRx Harness 架构图：Agent 工作流连接知识库、编译器分析、TIRx 基础与基准服务器，演化轨迹和优化 kernel 再回馈自我改进。" width="1500" height="768" loading="lazy">
+        <figcaption>官方架构图：Agent 不是直接面对黑盒编译器，而是获得知识、诊断、编译与受控测量的完整环境。</figcaption>
+      </figure>
+      <div class="grid-4" style="margin-top:.8rem">
+        <article class="tile">
+          <h3><span class="dot cyan"></span>TIRx-lite</h3>
+          <p>贴近 PTX 的最小编程面，显式表达寄存器、共享内存、同步、warp role 与执行坐标，减少高层 lowering 的语义猜测。</p>
+        </article>
+        <article class="tile">
+          <h3><span class="dot emerald"></span>正确性工具</h3>
+          <p><code>Synccheck</code>、<code>Racecheck</code>、<code>NumSim</code> 与 Compute Sanitizer 分层过滤同步错误、内存竞态和数值问题。</p>
+        </article>
+        <article class="tile">
+          <h3><span class="dot amber"></span>知识库</h3>
+          <p>Kernel Zoo 保留具体实现与优化模式；PTX ISA 负责暴露新硬件能力，避免自然语言总结过拟合单次调试。</p>
+        </article>
+        <article class="tile">
+          <h3><span class="dot rose"></span>KCoral</h3>
+          <p>远程基准服务器集中调度 GPU 请求，让 correctness、timing 与 profile 不被并发 Agent 干扰，也便于接入更多硬件。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="benchmark" aria-labelledby="benchmark-title">
+      <div class="section-head">
+        <p class="section-kicker">Evidence</p>
+        <h2 id="benchmark-title">Kernel Time 结果：强，但必须按口径读</h2>
+        <p>评测在 NVIDIA Blackwell GPU 上运行，基线取 2026.09.25-26 curated sweep；不同 family 的参考实现不同，倍数只能 family 内部解释。</p>
+      </div>
+      <div class="bench-panel">
+        <div class="bars" aria-label="官方几何平均加速倍数">
+          <div class="bar-row cyan">
+            <div class="bar-meta"><span>KDA backward vs FLA</span><strong>6.84x</strong></div>
+            <div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>
+          </div>
+          <div class="bar-row emerald">
+            <div class="bar-meta"><span>MSA decode</span><strong>3.99x</strong></div>
+            <div class="bar-track"><div class="bar-fill" style="width:58.3%"></div></div>
+          </div>
+          <div class="bar-row cyan">
+            <div class="bar-meta"><span>KDA forward vs FlashKDA</span><strong>2.94x</strong></div>
+            <div class="bar-track"><div class="bar-fill" style="width:43%"></div></div>
+          </div>
+          <div class="bar-row amber">
+            <div class="bar-meta"><span>MSA prefill</span><strong>2.59x</strong></div>
+            <div class="bar-track"><div class="bar-fill" style="width:37.9%"></div></div>
+          </div>
+          <div class="bar-row rose">
+            <div class="bar-meta"><span>MLA</span><strong>1.71x</strong></div>
+            <div class="bar-track"><div class="bar-fill" style="width:25%"></div></div>
+          </div>
+          <div class="bar-row rose">
+            <div class="bar-meta"><span>VSA</span><strong>1.68x</strong></div>
+            <div class="bar-track"><div class="bar-fill" style="width:24.6%"></div></div>
+          </div>
+          <div class="bar-row amber">
+            <div class="bar-meta"><span>KDA decode</span><strong>1.33x</strong></div>
+            <div class="bar-track"><div class="bar-fill" style="width:19.4%"></div></div>
+          </div>
+        </div>
+        <div>
+          <figure class="figure">
+            <img src="https://blog.mlc.ai/img/tirx-harness/benchmark-results.png" alt="官方 Blackwell 基准结果：KDA forward 2.94x、KDA backward 6.84x、MSA prefill 2.59x、MSA decode 3.99x、KDA decode 1.33x、MLA 1.71x、VSA 1.68x，并显示 min-max 区间。" width="1500" height="835" loading="lazy">
+            <figcaption>官方几何平均与 min-max 区间：参考实现按 family 独立选择，不能横向排名。</figcaption>
+          </figure>
+          <div class="notice">
+            <strong>读数边界：</strong>这是 GPU kernel time，不是端到端应用延迟。KDA 2.94x / 6.84x 不能推出 Kimi K3 线上 token 成本等比例下降；进入 serving 模型前还必须通过精度、TTFT/TPOT、P99 与稳定性验证。
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tactics" aria-labelledby="tactics-title">
+      <div class="section-head">
+        <p class="section-kicker">Optimization Patterns</p>
+        <h2 id="tactics-title">三个值得迁移的优化思想</h2>
+        <p>这些案例的关键不是具体 trick 本身，而是 ISA、Kernel Zoo 与分析工具如何把原本偶然的专家直觉变成 Agent 可发现的路线。</p>
+      </div>
+      <div class="grid-3">
+        <article class="tile">
+          <h3><span class="dot emerald"></span>用富余算力换关键路径</h3>
+          <p>KDA backward 中，Agent 计算完整 64x64 矩阵再保留对角线，用 Tensor Core 算力替代共享内存 partials 与 busy warp 的 reduction，官方称约 15% latency 改善。</p>
+        </article>
+        <article class="tile">
+          <h3><span class="dot cyan"></span>ISA 扩展搜索空间</h3>
+          <p>MSA sparse-prefill 从 PTX ISA 找到 <code>tcgen05.mma</code> output-lane masking；它不减少 MMA 计算量，却提升观测频率，带来 2-3% 收益。</p>
+        </article>
+        <article class="tile">
+          <h3><span class="dot amber"></span>迁移策略而非复制代码</h3>
+          <p>MSA 借 FlashAttention-4 的混合 exponential 策略缓解原生 exp 路径；KDA forward 借 GDN 层级逆分解替代串行 32x32 递推，官方称约 17% 改善。</p>
+        </article>
+      </div>
+    </section>
+
+    <section id="tokenomics" aria-labelledby="tokenomics-title">
+      <div class="section-head">
+        <p class="section-kicker">Token Economics</p>
+        <h2 id="tokenomics-title">先降低研发 token 成本，再谈线上单价</h2>
+        <p>对推理平台而言，TIRx Harness 的第一收益是压缩工程搜索成本与 GPU 试错浪费；只有目标 kernel 是端到端瓶颈时，才可能转化为 serving goodput 与 CPM 改善。</p>
+      </div>
+      <div class="grid-2">
+        <div class="tile">
+          <h3>成本公式中的位置</h3>
+          <div class="formula">CPM = (Annual TCO + Engineering Cost) / Annual Goodput Tokens × 10^6</div>
+          <p style="margin-top:.8rem">TIRx 直接作用在 Engineering Cost 与优化周期；进一步收益取决于 kernel 在端到端服务中的占比与瓶颈位置。</p>
+        </div>
+        <div class="tile">
+          <h3>落地判定</h3>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>场景</th><th>判断</th></tr></thead>
+                <tbody>
+                  <tr><td>Blackwell 集群 + KDA/MSA/MLA/VSA 瓶颈</td><td>高价值试点：先用 workload contract 固定正确性与基准。</td></tr>
+                  <tr><td>多 Agent 并行调优团队</td><td>KCoral 价值最高：避免共享 GPU 导致计时归因失败。</td></tr>
+                  <tr><td>瓶颈在调度、KV cache、网络或 MoE routing</td><td>优先系统 profiling；kernel harness 不是第一杠杆。</td></tr>
+                </tbody>
+              </table>
+            </div>
+        </div>
+      </div>
+      <details>
+        <summary>生产落地前检查清单</summary>
+        <div>
+          <ul>
+            <li>固定 commit、依赖版本、GPU 型号、频率、workload sweep 与计时器。</li>
+            <li>用上游实现做 correctness reference，并保留最小失败输入。</li>
+            <li>补充 TTFT、TPOT、P99、goodput、精度衰减与长时间稳定性。</li>
+            <li>确认授权：tirx-kernels 为 Apache-2.0，TIRx-harness 仓库发布时尚未标注 license。</li>
+            <li>把成功 kernel、输入、trace 与命令沉淀为可复现资产，而不是只写总结。</li>
+          </ul>
+        </div>
+      </details>
+    </section>
+
+    <section class="sources" aria-labelledby="sources-title">
+      <div class="section-head">
+        <p class="section-kicker">References</p>
+        <h2 id="sources-title">参考来源</h2>
+      </div>
+      <ol>
+        <li><a href="https://blog.mlc.ai/2026/09/29/tirx-harness-an-open-compiler-harness-for-agentic-gpu-programming" target="_blank" rel="noopener">MLC Community, TIRx Harness: An Open Compiler Harness for Agentic GPU Programming, 2026-09-29</a></li>
+        <li><a href="https://github.com/mlc-ai/TIRx-harness" target="_blank" rel="noopener">mlc-ai/TIRx-harness</a></li>
+        <li><a href="https://github.com/mlc-ai/tirx-kernels" target="_blank" rel="noopener">mlc-ai/tirx-kernels</a></li>
+        <li><a href="https://arxiv.org/abs/2608.12629" target="_blank" rel="noopener">Zihao Ye et al., CAKE: Compiler-Agent Co-Design for Frontier Kernel Evolution, arXiv:2608.12629</a></li>
+      </ol>
+    </section>
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-links">
+        <a href="../">研究首页</a>
+        <a href="../Topic-1-TokenEconomy/13-MLC-TIRx-Harness-Agentic-GPU-Kernel优化.md">完整研究报告</a>
+        <a href="glm-infra-agent-100k-cluster.html">智谱 10 万卡战报</a>
+        <a href="jev-system-one-tokenomics.html">Jev 决策模型</a>
+        <a href="index.html">MU25 战报</a>
+      </div>
+      <p style="margin-top:.7rem">© 2026 Token Research Institute · 基于 MLC 公开博客、GitHub 仓库与 arXiv 论文编撰。</p>
+    </div>
+  </footer>
+</body>
+</html>
